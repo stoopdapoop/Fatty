@@ -8,8 +8,15 @@ namespace Fatty
 {
     class Program
     {
+        static IRC Irc;
+        static ConfigReader Config;
+
         static void Main(string[] args)
         {
+            Config = new ConfigReader();
+            Config.AddConfig("Connection.cfg");
+
+
         }
     }
 }
