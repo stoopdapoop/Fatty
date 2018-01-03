@@ -17,10 +17,10 @@ namespace Fatty
         [DataMember(IsRequired = true)]
         public UInt16 ServerPort { get; set; }
 
-        //[DataMember(IsRequired = true)]
+        [DataMember(IsRequired = true)]
         public string Nick { get; set; }
 
-        //[DataMember(IsRequired = true)]
+        [DataMember]
         public List<string> Channels { get; set; }
     }
 }
