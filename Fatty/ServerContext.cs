@@ -21,6 +21,12 @@ namespace Fatty
         public string Nick { get; set; }
 
         [DataMember]
+        public string RealName { get; set; } = "FattyBot";
+
+        [DataMember]
+        public string AuthPassword { get; set; }
+
+        [DataMember]
         public List<string> Channels { get; set; }
     }
 }
