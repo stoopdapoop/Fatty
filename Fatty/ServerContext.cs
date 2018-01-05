@@ -20,13 +20,21 @@ namespace Fatty
         [DataMember(IsRequired = true)]
         public string Nick { get; set; }
 
-        [DataMember]
+        [DataMember(IsRequired = true)]
         public string RealName { get; set; } = "FattyBot";
+
+        [DataMember(IsRequired = true)]
+        public bool ShouldPrintToScreen { get; set; }
 
         [DataMember]
         public string AuthPassword { get; set; }
 
         [DataMember]
         public List<string> Channels { get; set; }
+
+        [DataMember]
+        public string QuitMessage { get; set; }
+
+        
     }
 }

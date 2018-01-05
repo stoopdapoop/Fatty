@@ -26,7 +26,7 @@ namespace Fatty
             JsonValue contextValue = connectionValue["ServerContext"][0];
             string ContextString = contextValue.ToString();
 
-           // DataContractJsonSerializer ser = new DataContractJsonSerializer(typeof(ServerContext));
+            AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
 
             using (var ms = new MemoryStream(Encoding.Unicode.GetBytes(ContextString)))
             {
@@ -42,6 +42,14 @@ namespace Fatty
 
             //Irc = new IRCConnection(context);
             //Irc.ConnectToServer();
+        }
+
+        static void OnProcessExit(object sender, EventArgs e)
+        {
+            if(Irc != default(IRCConnection))
+            {
+                Irc.DisconnectOnExit();
+            }
         }
     }
 }
