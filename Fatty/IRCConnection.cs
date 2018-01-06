@@ -81,7 +81,7 @@ namespace Fatty
                 // Send user info
                 PrintToScreen("Sending user info...");
                 SendServerMessage(String.Format("NICK {0}", Context.Nick));
-                SendServerMessage(String.Format("USER {0} * * :{1}", Context.Nick, Context.RealName));
+                SendServerMessage(String.Format("USER {0} 0 * :{1}", Context.Nick, Context.RealName));
 
                 // GHETTO REMOVE ME
                 Thread.Sleep(500);
