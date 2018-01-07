@@ -25,9 +25,10 @@ namespace Fatty
     public delegate void Kick(string ircChannel, string userKicker, string userKicked, string kickMessage);
     public delegate void Quit(string userQuit, string quitMessage);
     public delegate void Notice(string ircUser, string message);
+    public delegate void ServerWelcome(int messageID);
     #endregion
 
-    class IRCConnection
+    partial class IRCConnection
     {
         public ServerContext Context { get; set; }
 
@@ -36,7 +37,7 @@ namespace Fatty
         private StreamWriter IrcWriter { get; set; }
         private StreamReader IrcReader { get; set; }
 
-        private Object SendMessageLock = new Object();
+        private WelcomeProgress IRCWelcomeProgress;
 
         #region Events
         public event ChannelMessage ChannelMessageEvent;
@@ -53,16 +54,20 @@ namespace Fatty
         public event Quit QuitEvent;
         public event Notice NoticeEvent;
         public event AnyMessage AnyMessageEvent;
+        public event ServerWelcome ServerWelcomeEvent;
         #endregion
 
         public IRCConnection(ServerContext context)
         {
             this.Context = context;
+            this.IRCWelcomeProgress = new WelcomeProgress();
         }
 
         public void ConnectToServer()
         {
             Console.WriteLine("Attempting to connect to: {0}:{1}", Context.ServerURL, Context.ServerPort);
+
+            RegisterEventCallbacks();
 
             try
             {
@@ -82,13 +87,8 @@ namespace Fatty
                 PrintToScreen("Sending user info...");
                 SendServerMessage(String.Format("NICK {0}", Context.Nick));
                 SendServerMessage(String.Format("USER {0} 0 * :{1}", Context.Nick, Context.RealName));
-
-                // GHETTO REMOVE ME
-                Thread.Sleep(500);
-
-                Context.Channels.ForEach((channelName) => { JoinChannel(channelName); });
             }
-            catch(Exception e)
+            catch(Exception e )
             {
                 PrintToScreen("Connection Failed: {0}", e.Message);
             }
@@ -101,11 +101,8 @@ namespace Fatty
 
         public void SendServerMessage(string message)
         {
-            lock (SendMessageLock)
-            {
-                this.IrcWriter.WriteLine("{0}\r\n", message);
-                this.IrcWriter.Flush();
-            }
+            this.IrcWriter.WriteLine("{0}\r\n", message);
+            this.IrcWriter.Flush();
         }
 
         public void DisconnectOnExit()
@@ -153,32 +150,37 @@ namespace Fatty
             {
                 HandlePing(commandTokens);
             }
-            
+
+            switch (commandTokens[1])
+            {
+                // welcome messages
+                case "001":
+                case "002":
+                case "003":
+                case "004":
+                    {
+                        byte welcomeID = Byte.Parse(commandTokens[1]);
+                        IRCWelcomeProgress.NotifyOfMessage(welcomeID);
+                        break;
+                    }                   
+            }
         }
-
-        //private bool IsServerMessage(string[] commandParts)
-        //{
-        //    string possibleSender = commandParts[0];
-        //    Regex rgx = new Regex(@"\..*\..+$");
-        //    Match possibleSenderMatch = rgx.Match(possibleSender);
-        //    Match serverNameMatch = rgx.Match(Context.ServerURL);
-        //    if (!serverNameMatch.Success)
-        //        throw new Exception("cannot get toplevel domain from provided servername");
-        //    if (!possibleSenderMatch.Success)
-        //        return false;
-        //    string possibleVal = possibleSenderMatch.Value;
-        //    string serverVal = serverNameMatch.Value;
-        //    if (serverVal == possibleVal)
-        //        return true;
-
-        //    return false;
-        //}
 
         private void HandlePing(string[] pingTokens)
         {
             string pingHash = "";
             pingHash = String.Join(" ", pingTokens, 1, pingTokens.Length - 1);
             SendServerMessage("PONG " + pingHash);
+        }
+
+        private void OnWelcomeComplete()
+        {
+            Context.Channels.ForEach((channelName) => { JoinChannel(channelName); });
+        }
+
+        private void RegisterEventCallbacks()
+        {
+            IRCWelcomeProgress.WelcomeCompleteEvent += OnWelcomeComplete;
         }
     }
 }
