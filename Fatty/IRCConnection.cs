@@ -7,6 +7,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Net.Mail;
+using System.Net;
 
 namespace Fatty
 {
@@ -164,7 +166,7 @@ namespace Fatty
                     }
                 case "PRIVMSG":
                     {
-                        HandlePrivMsg(commandTokens);
+                        HandlePrivMsg(commandTokens, response);
                         break;
                     }
                 case "NOTICE":
@@ -181,14 +183,14 @@ namespace Fatty
             IRCWelcomeProgress.NotifyOfMessage(welcomeID);
         }
 
-        private void HandlePrivMsg(string[] tokens)
+        private void HandlePrivMsg(string[] tokens, string originalMessage)
         {
             if (ChannelMessageEvent == null && PrivateMessageEvent == null)
                 return;
 
             string userSender = tokens[0].Substring(0, tokens[0].IndexOf('!'));
             string messageTo = tokens[2];
-            string chatMessage = tokens[3].Substring(1);
+            string chatMessage = originalMessage.Substring(1 + originalMessage.LastIndexOf(':'));
 
             if(messageTo[0] == '#' || messageTo[0] == '&')
             {
@@ -231,6 +233,21 @@ namespace Fatty
         private void RegisterEventCallbacks()
         {
             IRCWelcomeProgress.WelcomeCompleteEvent += OnWelcomeComplete;
+            ChannelMessageEvent += TestOnChannelMessage;
+        }
+
+        private void TestOnChannelMessage(string ircUser, string ircChannel, string message)
+        {
+            if (ircChannel != "#cuties")
+                return;
+            SmtpClient testMail = new SmtpClient("smtp.gmail.com", 587);
+            testMail.UseDefaultCredentials = false;
+            testMail.Credentials = new NetworkCredential("sirragnard@gmail.com", "");
+            testMail.EnableSsl = true;
+            
+            MailMessage testMessage = new MailMessage("sirragnard@gmail.com", "@vtext.com", "hullo", message);
+            testMail.Send(testMessage);
         }
     }
 }
+
