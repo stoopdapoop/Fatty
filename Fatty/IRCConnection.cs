@@ -233,7 +233,7 @@ namespace Fatty
         private void RegisterEventCallbacks()
         {
             IRCWelcomeProgress.WelcomeCompleteEvent += OnWelcomeComplete;
-            ChannelMessageEvent += TestOnChannelMessage;
+            //ChannelMessageEvent += TestOnChannelMessage;
         }
 
         private void TestOnChannelMessage(string ircUser, string ircChannel, string message)
