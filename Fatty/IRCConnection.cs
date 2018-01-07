@@ -159,17 +159,67 @@ namespace Fatty
                 case "003":
                 case "004":
                     {
-                        byte welcomeID = Byte.Parse(commandTokens[1]);
-                        IRCWelcomeProgress.NotifyOfMessage(welcomeID);
+                        HandleWelcomeMessage(commandTokens);
                         break;
-                    }                   
+                    }
+                case "PRIVMSG":
+                    {
+                        HandlePrivMsg(commandTokens);
+                        break;
+                    }
+                case "NOTICE":
+                    {
+                        HandleNotice(commandTokens);
+                        break;
+                    }
             }
         }
 
+        private void HandleWelcomeMessage(string[] tokens)
+        {
+            byte welcomeID = Byte.Parse(tokens[1]);
+            IRCWelcomeProgress.NotifyOfMessage(welcomeID);
+        }
+
+        private void HandlePrivMsg(string[] tokens)
+        {
+            if (ChannelMessageEvent == null && PrivateMessageEvent == null)
+                return;
+
+            string userSender = tokens[0].Substring(0, tokens[0].IndexOf('!'));
+            string messageTo = tokens[2];
+            string chatMessage = tokens[3].Substring(1);
+
+            if(messageTo[0] == '#' || messageTo[0] == '&')
+            {
+                if (ChannelMessageEvent != null)
+                {
+                    ChannelMessageEvent(userSender, messageTo, chatMessage);
+                }
+            }
+            else
+            {
+                if (PrivateMessageEvent != null)
+                {
+                    PrivateMessageEvent(userSender, chatMessage);
+                }
+            }
+        }
+
+        private void HandleNotice(string[] tokens)
+        {
+            if(NoticeEvent != null)
+            {
+                string userSender = tokens[0].Substring(0, tokens[0].IndexOf('!'));
+                string noticeMessage = tokens[3].Substring(1);
+                NoticeEvent(userSender, noticeMessage);
+            }
+        }
+
+
         private void HandlePing(string[] pingTokens)
         {
-            string pingHash = "";
-            pingHash = String.Join(" ", pingTokens, 1, pingTokens.Length - 1);
+            string pingHash = pingTokens[1].Substring(1);
             SendServerMessage("PONG " + pingHash);
         }
 
