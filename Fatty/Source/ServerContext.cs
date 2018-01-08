@@ -9,7 +9,7 @@ using System.Runtime.Serialization.Json;
 namespace Fatty
 {
     [DataContract]
-    class ServerContext
+    public class ServerContext
     {
         [DataMember(IsRequired = true)]
         public string ServerURL { get; set; }

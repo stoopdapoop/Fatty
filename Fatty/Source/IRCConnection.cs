@@ -12,25 +12,7 @@ using System.Net;
 
 namespace Fatty
 {
-    #region Delegates
-    public delegate void AnyMessage(string message);
-    public delegate void ChannelMessage(string ircUser, string ircChannel, string message);
-    public delegate void PrivateMessage(string ircUser, string message);
-    public delegate void TopicSet(string ircChannel, string ircTopic);
-    public delegate void TopicOwner(string ircChannel, string ircUser, string topicDate);
-    public delegate void NamesList(string userNames);
-    public delegate void ServerMessage(string serverMessage);
-    public delegate void Join(string ircChannel, string ircUser);
-    public delegate void Part(string ircChannel, string ircUser);
-    public delegate void Mode(string ircChannel, string ircUser, string userMode);
-    public delegate void NickChange(string UserOldNick, string UserNewNick);
-    public delegate void Kick(string ircChannel, string userKicker, string userKicked, string kickMessage);
-    public delegate void Quit(string userQuit, string quitMessage);
-    public delegate void Notice(string ircUser, string message);
-    public delegate void ServerWelcome(int messageID);
-    #endregion
-
-    partial class IRCConnection
+    public partial class IRCConnection
     {
         public ServerContext Context { get; set; }
 
@@ -41,7 +23,6 @@ namespace Fatty
 
         private WelcomeProgress IRCWelcomeProgress;
 
-        #region Events
         public event ChannelMessage ChannelMessageEvent;
         public event PrivateMessage PrivateMessageEvent;
         public event TopicSet TopicSetEvent;
@@ -57,7 +38,6 @@ namespace Fatty
         public event Notice NoticeEvent;
         public event AnyMessage AnyMessageEvent;
         public event ServerWelcome ServerWelcomeEvent;
-        #endregion
 
         public IRCConnection(ServerContext context)
         {
@@ -96,12 +76,22 @@ namespace Fatty
             }
         }
 
-        public void SendServerMessage(string format, params object[] args)
+
+        public void SendMessage(string sendTo, string message)
+        {
+            string outputMessage = String.Format("PRIVMSG {0} :{1}\r\n", sendTo, message);
+            SendServerMessage(outputMessage);
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine(message);
+            Console.ResetColor();
+        }
+
+        private void SendServerMessage(string format, params object[] args)
         {
             SendServerMessage(String.Format(format, args));
         }
 
-        public void SendServerMessage(string message)
+        private void SendServerMessage(string message)
         {
             this.IrcWriter.WriteLine("{0}\r\n", message);
             this.IrcWriter.Flush();
@@ -196,7 +186,7 @@ namespace Fatty
             {
                 if (ChannelMessageEvent != null)
                 {
-                    ChannelMessageEvent(userSender, messageTo, chatMessage);
+                    ChannelMessageEvent(this, userSender, messageTo, chatMessage);
                 }
             }
             else
