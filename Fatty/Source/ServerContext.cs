@@ -30,7 +30,7 @@ namespace Fatty
         public string AuthPassword { get; set; }
 
         [DataMember]
-        public List<string> Channels { get; set; }
+        public List<ChannelContext> Channels { get; set; }
 
         [DataMember]
         public string QuitMessage { get; set; }

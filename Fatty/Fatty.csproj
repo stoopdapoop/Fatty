@@ -61,11 +61,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="IRCConnection.cs" />
-    <Compile Include="Program.cs" />
+    <Compile Include="Source\ChannelContext.cs" />
+    <Compile Include="Source\IRCConnection.cs" />
+    <Compile Include="Source\Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ServerContext.cs" />
-    <Compile Include="WelcomeProgress.cs" />
+    <Compile Include="Source\ServerContext.cs" />
+    <Compile Include="Source\WelcomeProgress.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
