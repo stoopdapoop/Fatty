@@ -1,14 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Net.Sockets;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Net.Mail;
 using System.Net;
+using System.Net.Mail;
+using System.Net.Sockets;
+using System.Threading;
 
 namespace Fatty
 {
@@ -22,6 +17,8 @@ namespace Fatty
         private StreamReader IrcReader { get; set; }
 
         private WelcomeProgress IRCWelcomeProgress;
+
+        private Object WriteLock = new object();
 
         public event ChannelMessage ChannelMessageEvent;
         public event PrivateMessage PrivateMessageEvent;
@@ -79,11 +76,14 @@ namespace Fatty
 
         public void SendMessage(string sendTo, string message)
         {
-            string outputMessage = String.Format("PRIVMSG {0} :{1}\r\n", sendTo, message);
-            SendServerMessage(outputMessage);
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine(message);
-            Console.ResetColor();
+            lock (WriteLock)
+            {
+                string outputMessage = String.Format("PRIVMSG {0} :{1}\r\n", sendTo, message);
+                SendServerMessage(outputMessage);
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(message);
+                Console.ResetColor();
+            }
         }
 
         private void SendServerMessage(string format, params object[] args)
@@ -93,8 +93,11 @@ namespace Fatty
 
         private void SendServerMessage(string message)
         {
-            this.IrcWriter.WriteLine("{0}\r\n", message);
-            this.IrcWriter.Flush();
+            lock (WriteLock)
+            {
+                this.IrcWriter.WriteLine("{0}\r\n", message);
+                this.IrcWriter.Flush();
+            }
         }
 
         public void DisconnectOnExit()
@@ -186,14 +189,14 @@ namespace Fatty
             {
                 if (ChannelMessageEvent != null)
                 {
-                    ChannelMessageEvent(this, userSender, messageTo, chatMessage);
+                    ChannelMessageEvent.BeginInvoke(this, userSender, messageTo, chatMessage, null, null);
                 }
             }
             else
             {
                 if (PrivateMessageEvent != null)
                 {
-                    PrivateMessageEvent(userSender, chatMessage);
+                    PrivateMessageEvent.BeginInvoke(userSender, chatMessage, null, null);
                 }
             }
         }
