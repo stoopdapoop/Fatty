@@ -189,14 +189,20 @@ namespace Fatty
             {
                 if (ChannelMessageEvent != null)
                 {
-                    ChannelMessageEvent.BeginInvoke(this, userSender, messageTo, chatMessage, null, null);
+                    foreach (ChannelMessage chanDel in ChannelMessageEvent.GetInvocationList())
+                    {
+                        chanDel.BeginInvoke(this, userSender, messageTo, chatMessage, null, null);
+                    }
                 }
             }
             else
             {
                 if (PrivateMessageEvent != null)
                 {
-                    PrivateMessageEvent.BeginInvoke(userSender, chatMessage, null, null);
+                    foreach (PrivateMessage privDel in PrivateMessageEvent.GetInvocationList())
+                    {
+                        privDel.BeginInvoke(userSender, chatMessage, null, null);
+                    }
                 }
             }
         }

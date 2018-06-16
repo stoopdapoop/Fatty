@@ -16,7 +16,7 @@
         {
             if(message.Contains(connection.Context.Nick))
             {
-                connection.SendMessage(ircChannel, "fuq u");
+                connection.SendMessage(ircChannel, "forget u");
             }
         }
     }

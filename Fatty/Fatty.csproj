@@ -61,6 +61,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Source\ConnectionInterface.cs" />
+    <Compile Include="Source\Fatty.cs" />
     <Compile Include="Source\FattyModule.cs" />
     <Compile Include="Source\ChannelContext.cs" />
     <Compile Include="Source\IRCConnection.cs" />
