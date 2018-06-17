@@ -7,9 +7,9 @@
             IsDefaultModule = true;
         }
 
-        public override void RegisterEvents(IRCConnection connection)
+        public override void RegisterEvents(ConnectionInterface connection)
         {
-            connection.ChannelMessageEvent += OnChannelMessage;
+            connection.AddChannelMessageCallback(OnChannelMessage);
         }
 
         void OnChannelMessage(IRCConnection connection, string ircUser, string ircChannel, string message)

@@ -8,7 +8,10 @@ namespace Fatty
         [DataMember]
         public bool IsDefaultModule { get; protected set; }
 
-        public virtual void RegisterEvents(IRCConnection connection)
+        [DataMember]
+        public string ModuleName { get; }
+
+        public virtual void RegisterEvents(ConnectionInterface connection)
         {
 
         }

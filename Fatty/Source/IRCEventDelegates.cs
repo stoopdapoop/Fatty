@@ -1,24 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Fatty
+﻿namespace Fatty
 {
-    public delegate void AnyMessage(string message);
-    public delegate void ChannelMessage(IRCConnection connection, string ircUser, string ircChannel, string message);
-    public delegate void PrivateMessage(string ircUser, string message);
-    public delegate void TopicSet(string ircChannel, string ircTopic);
-    public delegate void TopicOwner(string ircChannel, string ircUser, string topicDate);
-    public delegate void NamesList(string userNames);
-    public delegate void ServerMessage(string serverMessage);
-    public delegate void Join(string ircChannel, string ircUser);
-    public delegate void Part(string ircChannel, string ircUser);
-    public delegate void Mode(string ircChannel, string ircUser, string userMode);
-    public delegate void NickChange(string UserOldNick, string UserNewNick);
-    public delegate void Kick(string ircChannel, string userKicker, string userKicked, string kickMessage);
-    public delegate void Quit(string userQuit, string quitMessage);
-    public delegate void Notice(string ircUser, string message);
+    public delegate void ChannelMessageDelegate(IRCConnection connection, string ircUser, string ircChannel, string message);
+    public delegate void PrivateMessageDelegate(string ircUser, string message);
+    public delegate void TopicSetDelgate(string ircChannel, string ircTopic);
+    public delegate void TopicOwnerMessageDelegate(string ircChannel, string ircUser, string topicDate);
+    public delegate void NamesListMessageDelegate(string userNames);
+    public delegate void ServerMessageDelegate(string serverMessage);
+    public delegate void JoinMessageDelegate(string ircChannel, string ircUser);
+    public delegate void PartMessageDelegate(string ircChannel, string ircUser);
+    public delegate void ModeMessageDelegate(string ircChannel, string ircUser, string userMode);
+    public delegate void NickChangeMessageDelegate(string UserOldNick, string UserNewNick);
+    public delegate void KickMessageDelegate(string ircChannel, string userKicker, string userKicked, string kickMessage);
+    public delegate void QuitMessageDelegate(string userQuit, string quitMessage);
+    public delegate void NoticeDelegate(string ircUser, string message);
     public delegate void ServerWelcome(int messageID);
 }

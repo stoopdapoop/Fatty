@@ -20,20 +20,19 @@ namespace Fatty
 
         private Object WriteLock = new object();
 
-        public event ChannelMessage ChannelMessageEvent;
-        public event PrivateMessage PrivateMessageEvent;
-        public event TopicSet TopicSetEvent;
-        public event TopicOwner TopicOwnerEvent;
-        public event NamesList NamesListEvent;
-        public event ServerMessage ServerMessageEvent;
-        public event Join JoinEvent;
-        public event Part PartEvent;
-        public event Mode ModeEvent;
-        public event NickChange NickChangeEvent;
-        public event Kick KickEvent;
-        public event Quit QuitEvent;
-        public event Notice NoticeEvent;
-        public event AnyMessage AnyMessageEvent;
+        public event ChannelMessageDelegate ChannelMessageEvent;
+        public event PrivateMessageDelegate PrivateMessageEvent;
+        public event TopicSetDelgate TopicSetEvent;
+        public event TopicOwnerMessageDelegate TopicOwnerEvent;
+        public event NamesListMessageDelegate NamesListEvent;
+        public event ServerMessageDelegate ServerMessageEvent;
+        public event JoinMessageDelegate JoinEvent;
+        public event PartMessageDelegate PartEvent;
+        public event ModeMessageDelegate ModeEvent;
+        public event NickChangeMessageDelegate NickChangeEvent;
+        public event KickMessageDelegate KickEvent;
+        public event QuitMessageDelegate QuitEvent;
+        public event NoticeDelegate NoticeEvent;
         public event ServerWelcome ServerWelcomeEvent;
 
         public IRCConnection(ServerContext context)
@@ -81,7 +80,7 @@ namespace Fatty
                 string outputMessage = String.Format("PRIVMSG {0} :{1}\r\n", sendTo, message);
                 SendServerMessage(outputMessage);
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine(message);
+                Console.WriteLine(outputMessage);
                 Console.ResetColor();
             }
         }
@@ -189,7 +188,7 @@ namespace Fatty
             {
                 if (ChannelMessageEvent != null)
                 {
-                    foreach (ChannelMessage chanDel in ChannelMessageEvent.GetInvocationList())
+                    foreach (ChannelMessageDelegate chanDel in ChannelMessageEvent.GetInvocationList())
                     {
                         chanDel.BeginInvoke(this, userSender, messageTo, chatMessage, null, null);
                     }
@@ -199,7 +198,7 @@ namespace Fatty
             {
                 if (PrivateMessageEvent != null)
                 {
-                    foreach (PrivateMessage privDel in PrivateMessageEvent.GetInvocationList())
+                    foreach (PrivateMessageDelegate privDel in PrivateMessageEvent.GetInvocationList())
                     {
                         privDel.BeginInvoke(userSender, chatMessage, null, null);
                     }

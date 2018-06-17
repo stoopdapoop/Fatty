@@ -37,7 +37,7 @@ namespace Fatty
                 Irc = new IRCConnection(context);
                 IRCConnectionInterface = new ConnectionInterface(Irc);
 
-                RegisterModuleCallbacks(Irc);
+                RegisterModuleCallbacks(IRCConnectionInterface);
 
                 Irc.ConnectToServer();
             }
@@ -52,7 +52,7 @@ namespace Fatty
         }
 
 
-        void RegisterModuleCallbacks(IRCConnection connection)
+        void RegisterModuleCallbacks(ConnectionInterface connection)
         {
             foreach (FattyModule mod in Modules)
             {
