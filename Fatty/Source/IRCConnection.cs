@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Mail;
@@ -190,7 +191,13 @@ namespace Fatty
                 {
                     foreach (ChannelMessageDelegate chanDel in ChannelMessageEvent.GetInvocationList())
                     {
-                        chanDel.BeginInvoke(this, userSender, messageTo, chatMessage, null, null);
+                        Debug.Assert(Object.ReferenceEquals(chanDel.Target.GetType(), typeof(ChannelContext)), "Target of ChannelMessageDelegate not of type ChannelContext");
+
+                        ChannelContext DelegateContext = (ChannelContext)chanDel.Target;
+                        if (DelegateContext.ChannelName == messageTo)
+                        {
+                            chanDel.BeginInvoke(userSender, messageTo, chatMessage, null, null);
+                        }
                     }
                 }
             }
@@ -225,7 +232,7 @@ namespace Fatty
 
         private void OnWelcomeComplete()
         {
-            Context.Channels.ForEach((channeContext) => { JoinChannel(channeContext.ChannelName); });
+            Context.Channels.ForEach((channelContext) => { JoinChannel(channelContext.ChannelName); });
         }
 
         private void RegisterEventCallbacks()

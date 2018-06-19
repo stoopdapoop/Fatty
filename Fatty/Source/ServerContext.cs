@@ -31,6 +31,17 @@ namespace Fatty
         [DataMember]
         public string QuitMessage { get; set; }
 
-        
+        private IRCConnection OwnerConnection { get; set; }
+
+        public void Initialize(IRCConnection irc)
+        {
+            OwnerConnection = irc;
+
+            foreach(ChannelContext context in Channels)
+            {
+                context.Initialize(irc);
+            }
+        }
+
     }
 }

@@ -1,4 +1,6 @@
-﻿namespace Fatty
+﻿using System;
+
+namespace Fatty
 {
     public class TalkBackModule : FattyModule
     {
@@ -9,15 +11,12 @@
 
         public override void RegisterEvents(ConnectionInterface connection)
         {
-            connection.AddChannelMessageCallback(OnChannelMessage);
+            //connection.AddChannelMessageCallback(OnChannelMessage);
         }
 
-        void OnChannelMessage(IRCConnection connection, string ircUser, string ircChannel, string message)
+        void OnChannelMessage(string ircUser, string ircChannel, string message)
         {
-            if(message.Contains(connection.Context.Nick))
-            {
-                connection.SendMessage(ircChannel, "forget u");
-            }
+
         }
     }
 }

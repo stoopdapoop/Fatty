@@ -1,6 +1,6 @@
 ﻿namespace Fatty
 {
-    public delegate void ChannelMessageDelegate(IRCConnection connection, string ircUser, string ircChannel, string message);
+    public delegate void ChannelMessageDelegate(string ircUser, string ircChannel, string message);
     public delegate void PrivateMessageDelegate(string ircUser, string message);
     public delegate void TopicSetDelgate(string ircChannel, string ircTopic);
     public delegate void TopicOwnerMessageDelegate(string ircChannel, string ircUser, string topicDate);

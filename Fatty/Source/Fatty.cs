@@ -34,8 +34,11 @@ namespace Fatty
             {
                 var serializer = new DataContractJsonSerializer(typeof(ServerContext));
                 ServerContext context = (ServerContext)serializer.ReadObject(ms);
+
                 Irc = new IRCConnection(context);
                 IRCConnectionInterface = new ConnectionInterface(Irc);
+
+                context.Initialize(Irc);
 
                 RegisterModuleCallbacks(IRCConnectionInterface);
 
