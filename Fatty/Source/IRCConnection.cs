@@ -1,10 +1,11 @@
 ﻿using System;
-using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Mail;
 using System.Net.Sockets;
 using System.Threading;
+
+// Todo: handle kicking and parting
 
 namespace Fatty
 {
@@ -21,11 +22,11 @@ namespace Fatty
 
         private Object WriteLock = new object();
 
-        public event ChannelMessageDelegate ChannelMessageEvent;
         public event PrivateMessageDelegate PrivateMessageEvent;
         public event TopicSetDelgate TopicSetEvent;
         public event TopicOwnerMessageDelegate TopicOwnerEvent;
         public event NamesListMessageDelegate NamesListEvent;
+        // todo: invite event
         public event ServerMessageDelegate ServerMessageEvent;
         public event JoinMessageDelegate JoinEvent;
         public event PartMessageDelegate PartEvent;
@@ -178,28 +179,13 @@ namespace Fatty
 
         private void HandlePrivMsg(string[] tokens, string originalMessage)
         {
-            if (ChannelMessageEvent == null && PrivateMessageEvent == null)
-                return;
-
             string userSender = tokens[0].Substring(0, tokens[0].IndexOf('!'));
             string messageTo = tokens[2];
             string chatMessage = originalMessage.Substring(1 + originalMessage.LastIndexOf(':'));
 
             if(messageTo[0] == '#' || messageTo[0] == '&')
             {
-                if (ChannelMessageEvent != null)
-                {
-                    foreach (ChannelMessageDelegate chanDel in ChannelMessageEvent.GetInvocationList())
-                    {
-                        Debug.Assert(Object.ReferenceEquals(chanDel.Target.GetType(), typeof(ChannelContext)), "Target of ChannelMessageDelegate not of type ChannelContext");
-
-                        ChannelContext DelegateContext = (ChannelContext)chanDel.Target;
-                        if (DelegateContext.ChannelName == messageTo)
-                        {
-                            chanDel.BeginInvoke(userSender, messageTo, chatMessage, null, null);
-                        }
-                    }
-                }
+                Context.HandleServerMessage(userSender, messageTo, chatMessage);
             }
             else
             {

@@ -11,9 +11,9 @@ namespace Fatty
         [DataMember]
         public string ModuleName { get; }
 
-        public virtual void RegisterEvents(ConnectionInterface connection)
+        public virtual void RegisterEvents()
         {
-
+            // todo: fix meeeee
         }
     }
 }

@@ -9,7 +9,7 @@ namespace Fatty
             IsDefaultModule = true;
         }
 
-        public override void RegisterEvents(ConnectionInterface connection)
+        public override void RegisterEvents()
         {
             //connection.AddChannelMessageCallback(OnChannelMessage);
         }

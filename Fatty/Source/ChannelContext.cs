@@ -27,25 +27,23 @@ namespace Fatty
         [DataMember]
         public List<string> CommandWhitelist;
 
-        // todo: replace with servercontext
-        private IRCConnection OwningConnection;
+        private ServerContext Server;
 
-        public void Initialize(IRCConnection owner)
+        public void Initialize(ServerContext server)
         {
-            OwningConnection = owner;
-            OwningConnection.ChannelMessageEvent += HandleChannelMessage;
+            Server = server;
+            Server.ChannelMessageEvent += HandleChannelMessage;
+            // init plugins
         }
 
         private void HandleChannelMessage(string ircUser, string ircChannel, string message)
         {
-            // check against plugins
-            Console.WriteLine("Ayyyy");
+            Console.WriteLine(message);
         }
 
-        // does filtering by blacklist and whitelist
+        // does filtering by blacklist and whitelist for modules
         public void AddChannelMessageCallback(ChannelMessageDelegate callback)
         {
-            OwningConnection.ChannelMessageEvent += callback;
         }
         
     }

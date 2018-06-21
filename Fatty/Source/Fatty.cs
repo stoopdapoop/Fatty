@@ -13,8 +13,6 @@ namespace Fatty
     {
         private IRCConnection Irc;
 
-        private ConnectionInterface IRCConnectionInterface;
-
         private List<FattyModule> Modules = new List<FattyModule>();
 
         public void Launch()
@@ -36,11 +34,10 @@ namespace Fatty
                 ServerContext context = (ServerContext)serializer.ReadObject(ms);
 
                 Irc = new IRCConnection(context);
-                IRCConnectionInterface = new ConnectionInterface(Irc);
 
                 context.Initialize(Irc);
 
-                RegisterModuleCallbacks(IRCConnectionInterface);
+                RegisterModuleCallbacks();
 
                 Irc.ConnectToServer();
             }
@@ -55,11 +52,11 @@ namespace Fatty
         }
 
 
-        void RegisterModuleCallbacks(ConnectionInterface connection)
+        void RegisterModuleCallbacks()
         {
             foreach (FattyModule mod in Modules)
             {
-                mod.RegisterEvents(connection);
+                mod.RegisterEvents();
             }
         }
     }
