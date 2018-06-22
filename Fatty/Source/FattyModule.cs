@@ -6,14 +6,17 @@ namespace Fatty
     public class FattyModule
     {
         [DataMember]
-        public bool IsDefaultModule { get; protected set; }
-
-        [DataMember]
         public string ModuleName { get; }
+
+        protected ChannelContext OwningChannel;
+
+        public virtual void Init(ChannelContext channel)
+        {
+            OwningChannel = channel;
+        }
 
         public virtual void RegisterEvents()
         {
-            // todo: fix meeeee
         }
     }
 }

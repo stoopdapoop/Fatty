@@ -11,9 +11,13 @@ namespace Fatty
 {
     class Fatty
     {
+        public static IList<Type> GetDefaultModuleTypes { get { return DefaultModuleTypes.AsReadOnly(); } }
+        public static IList<Type> GetModuleTypes { get { return ModuleTypes.AsReadOnly(); } }
+
         private IRCConnection Irc;
 
-        private List<FattyModule> Modules = new List<FattyModule>();
+        private static List<Type> DefaultModuleTypes = new List<Type>();
+        private static List<Type> ModuleTypes = new List<Type>();
 
         public void Launch()
         {
@@ -26,7 +30,8 @@ namespace Fatty
 
             AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
 
-            Modules.Add(new TalkBackModule());
+            DefaultModuleTypes.Add(typeof(TalkBackModule));
+            ModuleTypes.Add(typeof(TalkBackModule));
 
             using (var ms = new MemoryStream(Encoding.Unicode.GetBytes(ContextString)))
             {
@@ -54,10 +59,10 @@ namespace Fatty
 
         void RegisterModuleCallbacks()
         {
-            foreach (FattyModule mod in Modules)
-            {
-                mod.RegisterEvents();
-            }
+            //foreach (FattyModule mod in Modules)
+            //{
+            //    mod.RegisterEvents();
+            //}
         }
     }
 }

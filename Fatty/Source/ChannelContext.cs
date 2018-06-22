@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.Serialization;
 
 namespace Fatty
@@ -7,7 +8,7 @@ namespace Fatty
     [DataContract]
     public class ChannelContext
     {
-        public event ChannelMessageDelegate ChannelMessageEvent;
+        public event PluginChannelMessageDelegate ChannelMessageEvent;
 
         [DataMember(IsRequired = true)]
         public string ChannelName { get; set; }
@@ -33,18 +34,41 @@ namespace Fatty
         {
             Server = server;
             Server.ChannelMessageEvent += HandleChannelMessage;
-            // init plugins
+
+            foreach( Type moduleType in Fatty.GetDefaultModuleTypes)
+            {
+                FattyModule module = (FattyModule)Activator.CreateInstance(moduleType);
+                module.Init(this);
+            }
+        }
+
+        public string GetFattyNick()
+        {
+            return Server.Nick;
+        }
+
+        public bool SendChannelMessage(string message)
+        {
+            //todo: filter based on permissions
+            Server.SendMessage(ChannelName, message);
+
+            return true;
         }
 
         private void HandleChannelMessage(string ircUser, string ircChannel, string message)
         {
-            Console.WriteLine(message);
-        }
-
-        // does filtering by blacklist and whitelist for modules
-        public void AddChannelMessageCallback(ChannelMessageDelegate callback)
-        {
-        }
-        
+            if (ChannelMessageEvent != null)
+            {
+                foreach (PluginChannelMessageDelegate chanDel in ChannelMessageEvent.GetInvocationList())
+                {
+                    FattyModule DelegateModule = (FattyModule)chanDel.Target;
+                    // todo: based on permissions
+                    //if (DelegateModule.ModuleName == ircChannel)
+                    {
+                        chanDel.BeginInvoke(ircUser, message, null, null);
+                    }
+                }
+            }
+        }        
     }
 }

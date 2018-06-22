@@ -4,19 +4,27 @@ namespace Fatty
 {
     public class TalkBackModule : FattyModule
     {
+        private static string[] Greetings = {"heddo", "hi", "herro", "hi der", "ayyo"};
+        private static Random Rand = new Random();
+
         public TalkBackModule()
         {
-            IsDefaultModule = true;
+
         }
 
-        public override void RegisterEvents()
+        public override void Init(ChannelContext channel)
         {
-            //connection.AddChannelMessageCallback(OnChannelMessage);
+            base.Init(channel);
+
+            OwningChannel.ChannelMessageEvent += OnChannelMessage;
         }
 
-        void OnChannelMessage(string ircUser, string ircChannel, string message)
+        void OnChannelMessage(string ircUser, string message)
         {
-
+            if(message.Contains(OwningChannel.GetFattyNick()))
+            {
+                OwningChannel.SendChannelMessage(Greetings[Rand.Next(Greetings.Length)]);
+            }
         }
     }
 }
