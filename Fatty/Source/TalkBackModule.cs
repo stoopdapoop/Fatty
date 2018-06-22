@@ -5,7 +5,7 @@ namespace Fatty
     public class TalkBackModule : FattyModule
     {
         private static string[] Greetings = {"heddo", "hi", "herro", "hi der", "ayyo"};
-        private static Random Rand = new Random();
+        static Random Rand = new Random();
 
         public TalkBackModule()
         {
