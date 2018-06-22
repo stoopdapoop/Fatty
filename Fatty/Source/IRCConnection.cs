@@ -224,20 +224,6 @@ namespace Fatty
         private void RegisterEventCallbacks()
         {
             IRCWelcomeProgress.WelcomeCompleteEvent += OnWelcomeComplete;
-            //ChannelMessageEvent += TestOnChannelMessage;
-        }
-
-        private void TestOnChannelMessage(string ircUser, string ircChannel, string message)
-        {
-            if (ircChannel != "#cuties")
-                return;
-            SmtpClient testMail = new SmtpClient("smtp.gmail.com", 587);
-            testMail.UseDefaultCredentials = false;
-            testMail.Credentials = new NetworkCredential("sirragnard@gmail.com", "");
-            testMail.EnableSsl = true;
-            
-            MailMessage testMessage = new MailMessage("sirragnard@gmail.com", "@vtext.com", "hullo", message);
-            testMail.Send(testMessage);
         }
     }
 }

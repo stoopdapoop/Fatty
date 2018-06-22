@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Json;
 using System.Linq;
+using System.Net;
+using System.Net.Mail;
 using System.Runtime.Serialization.Json;
 using System.Text;
 using System.Threading.Tasks;
@@ -19,36 +21,26 @@ namespace Fatty
         private static List<Type> DefaultModuleTypes = new List<Type>();
         private static List<Type> ModuleTypes = new List<Type>();
 
+        private bool IsEmailConfigured = false;
+
         public void Launch()
         {
-            StreamReader sr = new StreamReader("Connections.cfg");
-            string connectionsString = sr.ReadToEnd();
-            JsonValue connectionValue = JsonValue.Parse(connectionsString);
-
-            JsonValue contextValue = connectionValue["ServerContext"][0];
-            string ContextString = contextValue.ToString();
-
             AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
 
             DefaultModuleTypes.Add(typeof(TalkBackModule));
             ModuleTypes.Add(typeof(TalkBackModule));
 
-            using (var ms = new MemoryStream(Encoding.Unicode.GetBytes(ContextString)))
-            {
-                var serializer = new DataContractJsonSerializer(typeof(ServerContext));
-                ServerContext context = (ServerContext)serializer.ReadObject(ms);
+            // Todo: loop through server contexts and connect to each
+            ServerContext context = LoadServerConfig();
 
-                Irc = new IRCConnection(context);
+            Irc = new IRCConnection(context);
 
-                context.Initialize(Irc);
+            context.Initialize(Irc);
+            Irc.ConnectToServer();
 
-                RegisterModuleCallbacks();
-
-                Irc.ConnectToServer();
-            }
         }
 
-        void OnProcessExit(object sender, EventArgs e)
+        private void OnProcessExit(object sender, EventArgs e)
         {
             if (Irc != default(IRCConnection))
             {
@@ -56,13 +48,57 @@ namespace Fatty
             }
         }
 
-
-        void RegisterModuleCallbacks()
+        private ServerContext LoadServerConfig()
         {
-            //foreach (FattyModule mod in Modules)
-            //{
-            //    mod.RegisterEvents();
-            //}
+            try
+            {
+                StreamReader sr = new StreamReader("Connections.cfg");
+                string connectionsString = sr.ReadToEnd();
+                sr.Close();
+
+                JsonValue connectionValue = JsonValue.Parse(connectionsString);
+
+                JsonValue contextValue = connectionValue["ServerContext"][0];
+                string ContextString = contextValue.ToString();
+
+                MemoryStream ms = new MemoryStream(Encoding.Unicode.GetBytes(ContextString));
+
+                var serializer = new DataContractJsonSerializer(typeof(ServerContext));
+                ServerContext context;
+                context = (ServerContext)serializer.ReadObject(ms);
+
+                return context;
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine("Invalid Connections Config: " + e.Message);
+                return null;
+            }
         }
+
+        public bool SendEmail()
+        {
+            if (IsEmailConfigured)
+            {
+                try
+                {
+                    SmtpClient testMail = new SmtpClient("smtp.gmail.com", 587);
+                    testMail.UseDefaultCredentials = false;
+                    testMail.Credentials = new NetworkCredential("sirragnard@gmail.com", "");
+                    testMail.EnableSsl = true;
+
+                    //MailMessage testMessage = new MailMessage("sirragnard@gmail.com", "@vtext.com", "hullo", message);
+                    //testMail.Send(testMessage);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Error: " + e.Message);
+                    return false;
+                }
+
+                return true;
+            }
+            return false;
+        }      
     }
 }
