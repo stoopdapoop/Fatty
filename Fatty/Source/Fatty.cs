@@ -21,6 +21,7 @@ namespace Fatty
         private static List<Type> DefaultModuleTypes = new List<Type>();
         private static List<Type> ModuleTypes = new List<Type>();
 
+        private EmailConfig EmailSettings;
         private bool IsEmailConfigured = false;
 
         public void Launch()
@@ -32,6 +33,9 @@ namespace Fatty
 
             // Todo: loop through server contexts and connect to each
             ServerContext context = LoadServerConfig();
+            EmailSettings = LoadEmailConfig();
+
+            SendEmail();
 
             Irc = new IRCConnection(context);
 
@@ -76,19 +80,19 @@ namespace Fatty
             }
         }
 
-        public bool SendEmail()
+        public bool SendEmail(string recipient, string subject, string message)
         {
             if (IsEmailConfigured)
             {
                 try
                 {
-                    SmtpClient testMail = new SmtpClient("smtp.gmail.com", 587);
-                    testMail.UseDefaultCredentials = false;
-                    testMail.Credentials = new NetworkCredential("sirragnard@gmail.com", "");
-                    testMail.EnableSsl = true;
+                    SmtpClient MailClient = new SmtpClient(EmailSettings.SMTPAddress, EmailSettings.SMTPPort);
+                    MailClient.UseDefaultCredentials = false;
+                    MailClient.Credentials = new NetworkCredential(EmailSettings.EmailAddress, EmailSettings.Password);
+                    MailClient.EnableSsl = true;
 
-                    //MailMessage testMessage = new MailMessage("sirragnard@gmail.com", "@vtext.com", "hullo", message);
-                    //testMail.Send(testMessage);
+                    MailMessage MessageToSend = new MailMessage(EmailSettings.EmailAddress, recipient, subject, message);
+                    MailClient.Send(MessageToSend);
                 }
                 catch (Exception e)
                 {
@@ -99,6 +103,36 @@ namespace Fatty
                 return true;
             }
             return false;
-        }      
+        }
+
+        private EmailConfig LoadEmailConfig()
+        {
+            try
+            {
+                StreamReader sr = new StreamReader("EmailConfig.cfg");
+                string emailString = sr.ReadToEnd();
+                sr.Close();
+
+                JsonValue emailValue = JsonValue.Parse(emailString);
+
+                string valueString = emailValue.ToString();
+
+                MemoryStream ms = new MemoryStream(Encoding.Unicode.GetBytes(valueString));
+
+                var serializer = new DataContractJsonSerializer(typeof(EmailConfig));
+                EmailConfig config;
+                config = (EmailConfig)serializer.ReadObject(ms);
+
+                IsEmailConfigured = true;
+
+                return config;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Invalid Email Config: " + e.Message);
+                return null;
+            }
+        }
+
     }
 }

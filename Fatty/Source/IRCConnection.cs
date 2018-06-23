@@ -6,6 +6,7 @@ using System.Net.Sockets;
 using System.Threading;
 
 // Todo: handle kicking and parting
+// todo: handle nick registration
 
 namespace Fatty
 {

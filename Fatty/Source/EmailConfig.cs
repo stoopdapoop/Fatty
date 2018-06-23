@@ -7,15 +7,15 @@ namespace Fatty
     class EmailConfig
     {
         [DataMember(IsRequired = true)]
-        string SMTPAddress;
+        public string SMTPAddress;
 
         [DataMember(IsRequired = true)]
-        Int16 SMTPPort;
+        public Int16 SMTPPort;
 
         [DataMember(IsRequired = true)]
-        string EmailAddress;
+        public string EmailAddress;
 
         [DataMember(IsRequired = true)]
-        string Password;
+        public string Password;
     }
 }
