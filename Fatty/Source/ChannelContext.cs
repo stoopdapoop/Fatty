@@ -38,7 +38,7 @@ namespace Fatty
             Server = server;
             Server.ChannelMessageEvent += HandleChannelMessage;
 
-            foreach( Type moduleType in Fatty.GetDefaultModuleTypes)
+            foreach (Type moduleType in Fatty.GetDefaultModuleTypes)
             {
                 FattyModule module = (FattyModule)Activator.CreateInstance(moduleType);
                 module.Init(this);
@@ -72,6 +72,6 @@ namespace Fatty
                     }
                 }
             }
-        }        
+        }
     }
 }

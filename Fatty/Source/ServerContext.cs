@@ -44,7 +44,7 @@ namespace Fatty
         {
             OwnerConnection = irc;
 
-            foreach(ChannelContext context in Channels)
+            foreach (ChannelContext context in Channels)
             {
                 context.Initialize(this);
             }

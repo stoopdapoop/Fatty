@@ -72,7 +72,7 @@ namespace Fatty
 
                 return context;
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 Console.WriteLine("Invalid Connections Config: " + e.Message);
                 return null;

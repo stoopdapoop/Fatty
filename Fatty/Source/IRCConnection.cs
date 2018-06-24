@@ -69,7 +69,7 @@ namespace Fatty
                 SendServerMessage(String.Format("NICK {0}", Context.Nick));
                 SendServerMessage(String.Format("USER {0} 0 * :{1}", Context.Nick, Context.RealName));
             }
-            catch(Exception e )
+            catch (Exception e)
             {
                 PrintToScreen("Connection Failed: {0}", e.Message);
             }
@@ -181,7 +181,7 @@ namespace Fatty
             string messageTo = tokens[2];
             string chatMessage = originalMessage.Substring(1 + originalMessage.LastIndexOf(':'));
 
-            if(messageTo[0] == '#' || messageTo[0] == '&')
+            if (messageTo[0] == '#' || messageTo[0] == '&')
             {
                 Context.HandleServerMessage(userSender, messageTo, chatMessage);
             }
@@ -199,7 +199,7 @@ namespace Fatty
 
         private void HandleNotice(string[] tokens)
         {
-            if(NoticeEvent != null)
+            if (NoticeEvent != null)
             {
                 string userSender = tokens[0].Substring(0, tokens[0].IndexOf('!'));
                 string noticeMessage = tokens[3].Substring(1);

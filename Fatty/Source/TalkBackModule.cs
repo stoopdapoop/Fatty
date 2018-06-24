@@ -4,7 +4,7 @@ namespace Fatty
 {
     public class TalkBackModule : FattyModule
     {
-        private static string[] Greetings = {"heddo", "hi", "herro", "hi der", "ayyo" };
+        private static string[] Greetings = { "heddo", "hi", "herro", "hi der", "ayyo" };
         private static string[] PetNames = { "bb", "cutie", "babbycakes", "qt", "str8boi" };
         static Random Rand = new Random();
 
@@ -22,7 +22,7 @@ namespace Fatty
 
         void OnChannelMessage(string ircUser, string message)
         {
-            if(message.Contains(OwningChannel.GetFattyNick()))
+            if (message.Contains(OwningChannel.GetFattyNick()))
             {
                 int coinFlip = Rand.Next(0, 2);
                 if (coinFlip == 0)
