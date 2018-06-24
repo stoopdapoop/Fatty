@@ -21,6 +21,7 @@ namespace Fatty
         private static List<Type> DefaultModuleTypes = new List<Type>();
         private static List<Type> ModuleTypes = new List<Type>();
 
+        private Object EmailLock = new object();
         private EmailConfig EmailSettings;
         private bool IsEmailConfigured = false;
 
@@ -34,8 +35,6 @@ namespace Fatty
             // Todo: loop through server contexts and connect to each
             ServerContext context = LoadServerConfig();
             EmailSettings = LoadEmailConfig();
-
-            SendEmail();
 
             Irc = new IRCConnection(context);
 
@@ -82,27 +81,30 @@ namespace Fatty
 
         public bool SendEmail(string recipient, string subject, string message)
         {
-            if (IsEmailConfigured)
+            lock (EmailLock)
             {
-                try
+                if (IsEmailConfigured)
                 {
-                    SmtpClient MailClient = new SmtpClient(EmailSettings.SMTPAddress, EmailSettings.SMTPPort);
-                    MailClient.UseDefaultCredentials = false;
-                    MailClient.Credentials = new NetworkCredential(EmailSettings.EmailAddress, EmailSettings.Password);
-                    MailClient.EnableSsl = true;
+                    try
+                    {
+                        SmtpClient MailClient = new SmtpClient(EmailSettings.SMTPAddress, EmailSettings.SMTPPort);
+                        MailClient.UseDefaultCredentials = false;
+                        MailClient.Credentials = new NetworkCredential(EmailSettings.EmailAddress, EmailSettings.Password);
+                        MailClient.EnableSsl = true;
 
-                    MailMessage MessageToSend = new MailMessage(EmailSettings.EmailAddress, recipient, subject, message);
-                    MailClient.Send(MessageToSend);
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine("Error: " + e.Message);
-                    return false;
-                }
+                        MailMessage MessageToSend = new MailMessage(EmailSettings.EmailAddress, recipient, subject, message);
+                        MailClient.Send(MessageToSend);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Error: " + e.Message);
+                        return false;
+                    }
 
-                return true;
+                    return true;
+                }
+                return false;
             }
-            return false;
         }
 
         private EmailConfig LoadEmailConfig()

@@ -23,6 +23,9 @@ namespace Fatty
         [DataMember(IsRequired = true)]
         public bool ShouldPrintToScreen { get; private set; }
 
+        [DataMember(IsRequired = true)]
+        public string CommandPrefix { get; private set; }
+
         [DataMember]
         public string AuthPassword { get; private set; }
 

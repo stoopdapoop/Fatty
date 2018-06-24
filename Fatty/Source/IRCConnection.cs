@@ -95,11 +95,8 @@ namespace Fatty
 
         private void SendServerMessage(string message)
         {
-            lock (WriteLock)
-            {
-                this.IrcWriter.WriteLine("{0}\r\n", message);
-                this.IrcWriter.Flush();
-            }
+            this.IrcWriter.WriteLine("{0}\r\n", message);
+            this.IrcWriter.Flush();
         }
 
         public void DisconnectOnExit()
@@ -219,6 +216,7 @@ namespace Fatty
 
         private void OnWelcomeComplete()
         {
+            SendMessage("nickserv", "IDENTIFY " + Context.AuthPassword);
             Context.Channels.ForEach((channelContext) => { JoinChannel(channelContext.ChannelName); });
         }
 

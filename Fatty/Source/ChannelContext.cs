@@ -28,6 +28,9 @@ namespace Fatty
         [DataMember]
         public List<string> CommandWhitelist;
 
+        [DataMember]
+        public string CommandPrefix { get; private set; }
+
         private ServerContext Server;
 
         public void Initialize(ServerContext server)
