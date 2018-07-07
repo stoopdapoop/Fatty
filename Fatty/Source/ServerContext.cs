@@ -34,6 +34,9 @@ namespace Fatty
         public List<ChannelContext> Channels { get; private set; }
 
         [DataMember]
+        public List<string> AuthenticatedMasks { get; private set; }
+
+        [DataMember]
         public string QuitMessage { get; private set; }
 
         public event ChannelMessageDelegate ChannelMessageEvent;

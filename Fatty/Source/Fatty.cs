@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Mail;
 using System.Runtime.Serialization.Json;
 using System.Text;
+using System.Web;
 using System.Threading.Tasks;
 
 namespace Fatty
@@ -109,31 +110,7 @@ namespace Fatty
 
         private EmailConfig LoadEmailConfig()
         {
-            try
-            {
-                StreamReader sr = new StreamReader("EmailConfig.cfg");
-                string emailString = sr.ReadToEnd();
-                sr.Close();
-
-                JsonValue emailValue = JsonValue.Parse(emailString);
-
-                string valueString = emailValue.ToString();
-
-                MemoryStream ms = new MemoryStream(Encoding.Unicode.GetBytes(valueString));
-
-                var serializer = new DataContractJsonSerializer(typeof(EmailConfig));
-                EmailConfig config;
-                config = (EmailConfig)serializer.ReadObject(ms);
-
-                IsEmailConfigured = true;
-
-                return config;
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Invalid Email Config: " + e.Message);
-                return null;
-            }
+            return FattyHelpers.DeserializeFromPath<EmailConfig>("EmailConfig.cfg");
         }
 
     }
