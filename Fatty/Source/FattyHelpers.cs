@@ -35,9 +35,26 @@ namespace Fatty
             {
                 Console.WriteLine("Invalid Connections Config: " + e.Message);
                 return default(T);
-            }
+            }    
+        }
 
-            
+        public static T DeserializeFromJsonString<T>(string json)
+        {
+            try
+            {
+                MemoryStream ms = new MemoryStream(Encoding.Unicode.GetBytes(json));
+
+                var serializer = new DataContractJsonSerializer(typeof(T));
+                T returnVal;
+                returnVal = (T)serializer.ReadObject(ms);
+
+                return returnVal;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                return default(T);
+            }
         }
     }
 }
