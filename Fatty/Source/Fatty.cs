@@ -32,6 +32,7 @@ namespace Fatty
 
             DefaultModuleTypes.Add(typeof(TalkBackModule));
             ModuleTypes.Add(typeof(TalkBackModule));
+            ModuleTypes.Add(typeof(TDAmeritradeModule));
 
             // Todo: loop through server contexts and connect to each
             ServerContext context = LoadServerConfig();

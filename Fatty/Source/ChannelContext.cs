@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.Serialization;
+using System.Linq;
 
 namespace Fatty
 {
@@ -33,15 +34,49 @@ namespace Fatty
 
         private ServerContext Server;
 
+        [OnDeserialized]
+        private void DeserializationInitializer(StreamingContext ctx)
+        {
+            // get rid of any nulls that might have cropped up due to deserialization
+            if (FeatureBlacklist == null)
+                FeatureBlacklist = new List<string>();
+
+            if (CommandBlacklist == null)
+                CommandBlacklist = new List<string>();
+
+            if (FeatureWhitelist == null)
+                FeatureWhitelist = new List<string>();
+
+            if (CommandWhitelist == null)
+                CommandWhitelist = new List<string>();
+        }
+
         public void Initialize(ServerContext server)
         {
             Server = server;
             Server.ChannelMessageEvent += HandleChannelMessage;
 
-            foreach (Type moduleType in Fatty.GetDefaultModuleTypes)
+            foreach (Type moduleType in Fatty.GetModuleTypes)
             {
-                FattyModule module = (FattyModule)Activator.CreateInstance(moduleType);
-                module.Init(this);
+                bool shouldInstantiate = false;
+                string moduleName = moduleType.Name;
+                if (Fatty.GetDefaultModuleTypes.Any(x => x.Name == moduleName))
+                {
+                    if (!FeatureBlacklist.Contains(moduleName))
+                    {
+                        shouldInstantiate = true;
+                    }     
+                }
+                else if(FeatureWhitelist.Contains(moduleName))
+                {
+                    shouldInstantiate = true;
+                }
+
+                if(shouldInstantiate)
+                {
+                    FattyModule module = (FattyModule)Activator.CreateInstance(moduleType);
+                    module.Init(this);
+                }
             }
         }
 

@@ -72,6 +72,7 @@
     <Compile Include="Source\Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Source\ServerContext.cs" />
+    <Compile Include="Source\TDAmeritradeModule.cs" />
     <Compile Include="Source\WelcomeProgress.cs" />
     <Compile Include="Source\TalkBackModule.cs" />
   </ItemGroup>
