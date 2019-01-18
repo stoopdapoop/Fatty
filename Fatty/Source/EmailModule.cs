@@ -29,7 +29,7 @@ namespace Fatty
                 {
                     case "email":
                         if(chunks.Length > 2)
-                            SendEmail(chunks[1], String.Join(" ", chunks, 2, chunks.Length - 3));
+                            SendEmail(chunks[1], String.Join(" ", chunks, 2, chunks.Length - 2));
                         break;
                 }
             }
