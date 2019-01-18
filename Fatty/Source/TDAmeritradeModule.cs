@@ -44,6 +44,8 @@ namespace Fatty
         TDAmeritradeConfig Config;
         bool InitSuccess = false;
 
+        // todo: refresh tokens periodically, like twice an accessexpirationdate
+
         const string PostAccessTokenURL = @"https://api.tdameritrade.com/v1/oauth2/token";
 
         public override void Init(ChannelContext channel)

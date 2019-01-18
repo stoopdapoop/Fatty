@@ -110,7 +110,9 @@ namespace Fatty
             string ircResponse;
             while ((ircResponse = this.IrcReader.ReadLine()) != null)
             {
-                PrintToScreen(ircResponse);
+                // ignore pings because they just inflate logs
+                if(!ircResponse.StartsWith("PING"))
+                    PrintToScreen(ircResponse);
 
                 DispatchMessageEvents(ircResponse);
             }
@@ -166,6 +168,11 @@ namespace Fatty
                         HandleNotice(commandTokens);
                         break;
                     }
+                case "INVITE":
+                    {
+                        HandleInvite(commandTokens);
+                        break;
+                    }
                 case "353":
                     {
                         HandleChannelJoin(commandTokens);
@@ -212,7 +219,13 @@ namespace Fatty
             }
         }
 
-        private void HandleChannelJoin(string[] tokens)
+        private void HandleInvite(string[] tokens)
+        {
+            // todo: get authenticated masks from server context
+            JoinChannel(tokens[3].TrimStart(':'));
+        }
+
+            private void HandleChannelJoin(string[] tokens)
         {
             Context.HandleChannelJoin(tokens[4]);
         }
