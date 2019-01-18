@@ -41,6 +41,8 @@ namespace Fatty
 
         public event ChannelMessageDelegate ChannelMessageEvent;
 
+        public event ChannelJoinedDelegate ChannelJoinedEvent;
+
         private IRCConnection OwnerConnection { get; set; }
 
         public void Initialize(IRCConnection irc)
@@ -50,6 +52,23 @@ namespace Fatty
             foreach (ChannelContext context in Channels)
             {
                 context.Initialize(this);
+            }
+        }
+
+        public void HandleChannelJoin(string ircChannel)
+        {
+            if (ChannelJoinedEvent != null)
+            {
+                foreach (ChannelJoinedDelegate chanDel in ChannelJoinedEvent.GetInvocationList())
+                {
+                    Debug.Assert(Object.ReferenceEquals(chanDel.Target.GetType(), typeof(ChannelContext)), "Target of ChannelMessageDelegate not of type ChannelContext");
+
+                    ChannelContext DelegateContext = (ChannelContext)chanDel.Target;
+                    if (DelegateContext.ChannelName == ircChannel)
+                    {
+                        chanDel(ircChannel);
+                    }
+                }
             }
         }
 
@@ -64,7 +83,7 @@ namespace Fatty
                     ChannelContext DelegateContext = (ChannelContext)chanDel.Target;
                     if (DelegateContext.ChannelName == ircChannel)
                     {
-                        chanDel.BeginInvoke(ircUser, ircChannel, message, null, null);
+                        chanDel(ircUser, ircChannel, message);
                     }
                 }
             }

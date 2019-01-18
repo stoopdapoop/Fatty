@@ -2,6 +2,8 @@
 {
 
     public delegate void PluginChannelMessageDelegate(string ircUser, string message);
+    public delegate void PluginChannelJoinedDelegate(string ircChannel);
+    public delegate void ChannelJoinedDelegate(string ircChannel);
     public delegate void ChannelMessageDelegate(string ircUser, string ircChannel, string message);
     public delegate void PrivateMessageDelegate(string ircUser, string message);
     public delegate void TopicSetDelgate(string ircChannel, string ircTopic);

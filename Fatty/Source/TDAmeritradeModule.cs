@@ -1,11 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Runtime.Serialization;
-using System.Runtime.Serialization.Json;
-using System.Text;
-using System.Threading.Tasks;
+using System.Web;
 using RestSharp;
 
 namespace Fatty
@@ -47,6 +42,7 @@ namespace Fatty
         }
 
         TDAmeritradeConfig Config;
+        bool InitSuccess = false;
 
         const string PostAccessTokenURL = @"https://api.tdameritrade.com/v1/oauth2/token";
 
@@ -54,9 +50,12 @@ namespace Fatty
         {
             base.Init(channel);
 
+            channel.ChannelJoinedEvent += OnChannelJoin;
+
             Config = FattyHelpers.DeserializeFromPath<TDAmeritradeConfig>("TDAmeritrade.cfg");
             PostAccessTokenResponse oldResponse = FattyHelpers.DeserializeFromPath<PostAccessTokenResponse>("AmeritradeTokens.pls");
 
+            //string code = HttpUtility.UrlDecode("");
             RestClient client = new RestClient(PostAccessTokenURL);
 
             RestRequest request = new RestRequest(Method.POST);
@@ -64,15 +63,29 @@ namespace Fatty
             request.AddParameter("refresh_token", oldResponse.RefreshToken);
             request.AddParameter("access_type", "offline");
             request.AddParameter("client_id", Config.ClientID);
-            request.AddParameter("redirect_uri", Config.RedirectURI); 
+            request.AddParameter("redirect_uri", Config.RedirectURI);
 
             IRestResponse response = client.Execute(request);
             if(response.IsSuccessful)
             {
+                Console.WriteLine("Ameritrade Authentication Sucessful");
                 PostAccessTokenResponse result = FattyHelpers.DeserializeFromJsonString<PostAccessTokenResponse>(response.Content);
-
+                InitSuccess = true;
                 System.IO.File.WriteAllText(@"AmeritradeTokens.pls", response.Content);
             }
+            else
+            {
+                Console.WriteLine("Ameritrade Authentication Failed");
+                InitSuccess = false;
+            }
+        }
+
+        private void OnChannelJoin(string ircChannel)
+        {
+            if (InitSuccess)
+                OwningChannel.SendChannelMessage("TD Ameritrade authenticated fine");
+            else
+                OwningChannel.SendChannelMessage("TD Ameritrade didn't authenticate fine");
         }
     }
 }

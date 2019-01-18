@@ -166,6 +166,11 @@ namespace Fatty
                         HandleNotice(commandTokens);
                         break;
                     }
+                case "353":
+                    {
+                        HandleChannelJoin(commandTokens);
+                        break;
+                    }
             }
         }
 
@@ -191,7 +196,7 @@ namespace Fatty
                 {
                     foreach (PrivateMessageDelegate privDel in PrivateMessageEvent.GetInvocationList())
                     {
-                        privDel.BeginInvoke(userSender, chatMessage, null, null);
+                        privDel(userSender, chatMessage);
                     }
                 }
             }
@@ -207,6 +212,10 @@ namespace Fatty
             }
         }
 
+        private void HandleChannelJoin(string[] tokens)
+        {
+            Context.HandleChannelJoin(tokens[4]);
+        }
 
         private void HandlePing(string[] pingTokens)
         {

@@ -10,6 +10,7 @@ namespace Fatty
     public class ChannelContext
     {
         public event PluginChannelMessageDelegate ChannelMessageEvent;
+        public event PluginChannelJoinedDelegate ChannelJoinedEvent;
 
         [DataMember(IsRequired = true)]
         public string ChannelName { get; set; }
@@ -49,12 +50,18 @@ namespace Fatty
 
             if (CommandWhitelist == null)
                 CommandWhitelist = new List<string>();
+
+            if(CommandPrefix == null)
+            {
+                CommandPrefix = ".";
+            }
         }
 
         public void Initialize(ServerContext server)
         {
             Server = server;
             Server.ChannelMessageEvent += HandleChannelMessage;
+            Server.ChannelJoinedEvent += HandleChannelJoined;
 
             foreach (Type moduleType in Fatty.GetModuleTypes)
             {
@@ -75,6 +82,7 @@ namespace Fatty
                 if(shouldInstantiate)
                 {
                     FattyModule module = (FattyModule)Activator.CreateInstance(moduleType);
+                    Console.WriteLine("Initializing {0} in {1}", module.ToString(), ChannelName);
                     module.Init(this);
                 }
             }
@@ -99,12 +107,22 @@ namespace Fatty
             {
                 foreach (PluginChannelMessageDelegate chanDel in ChannelMessageEvent.GetInvocationList())
                 {
+                    // todo: blacklist and whitelist
                     FattyModule DelegateModule = (FattyModule)chanDel.Target;
-                    // todo: based on permissions
-                    //if (DelegateModule.ModuleName == ircChannel)
-                    {
-                        chanDel.BeginInvoke(ircUser, message, null, null);
-                    }
+                    chanDel(ircUser, message);
+                }
+            }
+        }
+
+        private void HandleChannelJoined(string ircChannel)
+        {
+            if (ChannelJoinedEvent != null)
+            {
+                foreach (PluginChannelJoinedDelegate chanDel in ChannelJoinedEvent.GetInvocationList())
+                {
+                    // todo: blacklist and whitelist modules
+                    FattyModule DelegateModule = (FattyModule)chanDel.Target;
+                    chanDel(ircChannel);
                 }
             }
         }

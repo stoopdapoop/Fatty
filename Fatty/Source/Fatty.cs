@@ -2,13 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Json;
-using System.Linq;
 using System.Net;
 using System.Net.Mail;
 using System.Runtime.Serialization.Json;
 using System.Text;
-using System.Web;
-using System.Threading.Tasks;
 
 namespace Fatty
 {
@@ -22,9 +19,9 @@ namespace Fatty
         private static List<Type> DefaultModuleTypes = new List<Type>();
         private static List<Type> ModuleTypes = new List<Type>();
 
-        private Object EmailLock = new object();
-        private EmailConfig EmailSettings;
-        private bool IsEmailConfigured = false;
+        static private Object EmailLock = new object();
+        static private EmailConfig EmailSettings;
+        static private bool IsEmailConfigured = false;
 
         public void Launch()
         {
@@ -33,6 +30,7 @@ namespace Fatty
             DefaultModuleTypes.Add(typeof(TalkBackModule));
             ModuleTypes.Add(typeof(TalkBackModule));
             ModuleTypes.Add(typeof(TDAmeritradeModule));
+            ModuleTypes.Add(typeof(EmailModule));
 
             // Todo: loop through server contexts and connect to each
             ServerContext context = LoadServerConfig();
@@ -81,7 +79,7 @@ namespace Fatty
             }
         }
 
-        public bool SendEmail(string recipient, string subject, string message)
+        static public bool SendEmail(string recipient, string subject, string message)
         {
             lock (EmailLock)
             {
@@ -111,7 +109,16 @@ namespace Fatty
 
         private EmailConfig LoadEmailConfig()
         {
-            return FattyHelpers.DeserializeFromPath<EmailConfig>("EmailConfig.cfg");
+            try
+            {
+                var ReturnConfig = FattyHelpers.DeserializeFromPath<EmailConfig>("EmailConfig.cfg");
+                IsEmailConfigured = true;
+                return ReturnConfig;
+            }
+            catch (Exception e)
+            {
+                return null;
+            }
         }
 
     }
