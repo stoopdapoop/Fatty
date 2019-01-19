@@ -221,11 +221,26 @@ namespace Fatty
 
         private void HandleInvite(string[] tokens)
         {
-            // todo: get authenticated masks from server context
-            JoinChannel(tokens[3].TrimStart(':'));
+            bool ChannelJoined = false;
+            foreach(string authMask in Context.AuthenticatedMasks)
+            {
+                if(tokens[0].Substring(tokens[0].IndexOf("@") + 1) == authMask)
+                {
+                    JoinChannel(tokens[3].TrimStart(':'));
+                    ChannelJoined = true;
+                }
+            }
+
+            if(!ChannelJoined)
+            {
+                int startIndex = tokens[0][0] == ':' ? 1 : 0;
+                int endIndex = tokens[0].IndexOf('!');
+                string SendingTo = tokens[0].Substring(startIndex, endIndex - startIndex);
+                SendMessage(SendingTo, "Nope, Sorry");
+            }
         }
 
-            private void HandleChannelJoin(string[] tokens)
+        private void HandleChannelJoin(string[] tokens)
         {
             Context.HandleChannelJoin(tokens[4]);
         }
