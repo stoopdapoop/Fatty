@@ -37,7 +37,9 @@ namespace Fatty
                         OwningChannel.SendChannelMessage("NO!");
                         break;
                 }
-
+            }
+            else
+            {
                 if (message.Contains(OwningChannel.GetFattyNick()))
                 {
                     RandomGreeting(message);

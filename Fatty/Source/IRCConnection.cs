@@ -63,14 +63,11 @@ namespace Fatty
 
         public void SendMessage(string sendTo, string message)
         {
-            lock (WriteLock)
-            {
-                string outputMessage = String.Format("PRIVMSG {0} :{1}\r\n", sendTo, message);
-                SendServerMessage(outputMessage);
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine(outputMessage);
-                Console.ResetColor();
-            }
+            string outputMessage = String.Format("PRIVMSG {0} :{1}\r\n", sendTo, message);
+            SendServerMessage(outputMessage);
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine(outputMessage);
+            Console.ResetColor();
         }
 
         private void SendServerMessage(string format, params object[] args)
@@ -99,11 +96,16 @@ namespace Fatty
             while ((ircResponse = this.IrcReader.ReadLine()) != null)
             {
                 // ignore pings because they just inflate logs
-                if(!ircResponse.StartsWith("PING"))
+                if (!ircResponse.StartsWith("PING"))
                     PrintToScreen(ircResponse);
-                else
-                    DispatchMessageEvents(ircResponse);
+                ThreadPool.QueueUserWorkItem(ThreadProc, ircResponse);
             }
+        }
+
+        void ThreadProc(object stateInfo)
+        {
+            // No state object was passed to QueueUserWorkItem, so stateInfo is null.
+            DispatchMessageEvents((string)stateInfo);
         }
 
         private void JoinChannel(string channelName)
