@@ -8,6 +8,7 @@ namespace Fatty
         {
             public delegate void WelcomeComplete();
             public event WelcomeComplete WelcomeCompleteEvent;
+            private Object WelcomeLock = new object();
 
             // bitfield to keep track of which messages have been received from the server
             private byte MessagesReceived;
@@ -15,21 +16,24 @@ namespace Fatty
 
             public void NotifyOfMessage(byte messageID)
             {
-                if (messageID < 1 || messageID > 4)
+                lock (WelcomeLock)
                 {
-                    Console.WriteLine("Received invalid welcome message ID: {0}", messageID);
-                }
-                else
-                {
-                    byte testBit = (byte)(1 << messageID);
-                    MessagesReceived = (byte)(MessagesReceived | testBit);
-
-                    if (IsWelcomeComplete())
+                    if (messageID < 1 || messageID > 4)
                     {
-                        if (!HasFinishedWelcome)
+                        Console.WriteLine("Received invalid welcome message ID: {0}", messageID);
+                    }
+                    else
+                    {
+                        byte testBit = (byte)(1 << messageID);
+                        MessagesReceived = (byte)(MessagesReceived | testBit);
+
+                        if (IsWelcomeComplete())
                         {
-                            WelcomeCompleteEvent();
-                            HasFinishedWelcome = true;
+                            if (!HasFinishedWelcome)
+                            {
+                                WelcomeCompleteEvent();
+                                HasFinishedWelcome = true;
+                            }
                         }
                     }
                 }
