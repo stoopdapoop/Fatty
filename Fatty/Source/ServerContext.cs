@@ -29,7 +29,6 @@ namespace Fatty
         [DataMember]
         public string AuthPassword { get; private set; }
 
-        // todo: make this read only
         [DataMember]
         public List<ChannelContext> Channels { get; private set; }
 

@@ -107,7 +107,6 @@ namespace Fatty
             {
                 foreach (PluginChannelMessageDelegate chanDel in ChannelMessageEvent.GetInvocationList())
                 {
-                    // todo: blacklist and whitelist
                     FattyModule DelegateModule = (FattyModule)chanDel.Target;
                     chanDel(ircUser, message);
                 }
@@ -120,7 +119,6 @@ namespace Fatty
             {
                 foreach (PluginChannelJoinedDelegate chanDel in ChannelJoinedEvent.GetInvocationList())
                 {
-                    // todo: blacklist and whitelist modules
                     FattyModule DelegateModule = (FattyModule)chanDel.Target;
                     chanDel(ircChannel);
                 }

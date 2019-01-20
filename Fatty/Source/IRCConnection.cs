@@ -5,9 +5,6 @@ using System.Net.Mail;
 using System.Net.Sockets;
 using System.Threading;
 
-// Todo: handle kicking and parting
-// todo: handle nick registration
-
 namespace Fatty
 {
     public partial class IRCConnection
@@ -24,19 +21,7 @@ namespace Fatty
         private Object WriteLock = new object();
 
         public event PrivateMessageDelegate PrivateMessageEvent;
-        public event TopicSetDelgate TopicSetEvent;
-        public event TopicOwnerMessageDelegate TopicOwnerEvent;
-        public event NamesListMessageDelegate NamesListEvent;
-        // todo: invite event
-        public event ServerMessageDelegate ServerMessageEvent;
-        public event JoinMessageDelegate JoinEvent;
-        public event PartMessageDelegate PartEvent;
-        public event ModeMessageDelegate ModeEvent;
-        public event NickChangeMessageDelegate NickChangeEvent;
-        public event KickMessageDelegate KickEvent;
-        public event QuitMessageDelegate QuitEvent;
         public event NoticeDelegate NoticeEvent;
-        public event ServerWelcome ServerWelcomeEvent;
 
         public IRCConnection(ServerContext context)
         {
@@ -95,8 +80,11 @@ namespace Fatty
 
         private void SendServerMessage(string message)
         {
-            this.IrcWriter.WriteLine("{0}\r\n", message);
-            this.IrcWriter.Flush();
+            lock (WriteLock)
+            {
+                this.IrcWriter.WriteLine("{0}\r\n", message);
+                this.IrcWriter.Flush();
+            }
         }
 
         public void DisconnectOnExit()
@@ -113,8 +101,8 @@ namespace Fatty
                 // ignore pings because they just inflate logs
                 if(!ircResponse.StartsWith("PING"))
                     PrintToScreen(ircResponse);
-
-                DispatchMessageEvents(ircResponse);
+                else
+                    DispatchMessageEvents(ircResponse);
             }
         }
 
