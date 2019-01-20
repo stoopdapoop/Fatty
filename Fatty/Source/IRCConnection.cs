@@ -123,6 +123,11 @@ namespace Fatty
             SendServerMessage("JOIN {0}", channelName);
         }
 
+        private void PartChannel(string channelName)
+        {
+            SendServerMessage("PART {0} {1}", channelName, Context.QuitMessage);
+        }
+
         public void PrintToScreen(string format, params object[] args)
         {
             PrintToScreen(String.Format(format, args));
@@ -211,10 +216,36 @@ namespace Fatty
 
         private void HandleNotice(string[] tokens)
         {
-            if (NoticeEvent != null)
+            bool bAdminCommand = false;
+            if(IsAuthenticatedUser(tokens[0]))
+            {
+                if (tokens.Length < 5)
+                {
+                    string userSender = tokens[0].Substring(0, tokens[0].IndexOf('!'));
+                    SendMessage(userSender, "Not enough args");
+                }
+                else
+                {
+                    string messageCommand = tokens[3].TrimStart(':').ToLower();
+                    switch (messageCommand)
+                    {
+                        case "join":
+                            JoinChannel(tokens[4]);
+                            bAdminCommand = true;
+                            break;
+                        case "part":
+                        case "leave":
+                            PartChannel(tokens[4]);
+                            bAdminCommand = true;
+                            break;
+                    }
+                }
+            }
+
+            if (NoticeEvent != null && !bAdminCommand)
             {
                 string userSender = tokens[0].Substring(0, tokens[0].IndexOf('!'));
-                string noticeMessage = tokens[3].Substring(1);
+                string noticeMessage = tokens[3].TrimStart(':');
                 NoticeEvent(userSender, noticeMessage);
             }
         }
@@ -222,16 +253,13 @@ namespace Fatty
         private void HandleInvite(string[] tokens)
         {
             bool ChannelJoined = false;
-            foreach(string authMask in Context.AuthenticatedMasks)
+            if (IsAuthenticatedUser(tokens[0]))
             {
-                if(tokens[0].Substring(tokens[0].IndexOf("@") + 1) == authMask)
-                {
-                    JoinChannel(tokens[3].TrimStart(':'));
-                    ChannelJoined = true;
-                }
+                JoinChannel(tokens[3].TrimStart(':'));
+                ChannelJoined = true;
             }
 
-            if(!ChannelJoined)
+            if (!ChannelJoined)
             {
                 int startIndex = tokens[0][0] == ':' ? 1 : 0;
                 int endIndex = tokens[0].IndexOf('!');
@@ -260,6 +288,19 @@ namespace Fatty
         private void RegisterEventCallbacks()
         {
             IRCWelcomeProgress.WelcomeCompleteEvent += OnWelcomeComplete;
+        }
+
+        private bool IsAuthenticatedUser(string UserToken)
+        {
+            foreach (string authMask in Context.AuthenticatedMasks)
+            {
+                if (UserToken.Substring(UserToken.IndexOf("@") + 1) == authMask)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }

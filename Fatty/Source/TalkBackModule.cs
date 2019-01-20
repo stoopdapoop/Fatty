@@ -21,20 +21,44 @@ namespace Fatty
 
         void OnChannelMessage(string ircUser, string message)
         {
-            Random Rand = new Random();
-            if (message.Contains(OwningChannel.GetFattyNick()))
+            if (message.StartsWith(OwningChannel.CommandPrefix))
             {
-                int coinFlip = Rand.Next(0, 2);
-                if (coinFlip == 0)
-                {
-                    OwningChannel.SendChannelMessage(Greetings[Rand.Next(Greetings.Length)]);
-                }
+                int spacePos = message.IndexOf(" ");
+                int commandPrefixLength = OwningChannel.CommandPrefix.Length;
+                string CommandName;
+                if(spacePos == -1)
+                    CommandName = message.Substring(commandPrefixLength).ToLower();
                 else
+                    CommandName = message.Substring(commandPrefixLength, spacePos - commandPrefixLength).ToLower();
+
+                switch (CommandName)
                 {
-                    string greeting = Greetings[Rand.Next(Greetings.Length)];
-                    string petName = PetNames[Rand.Next(PetNames.Length)];
-                    OwningChannel.SendChannelMessage(greeting + " " + petName);
+                    case "noel":
+                        OwningChannel.SendChannelMessage("NO!");
+                        break;
                 }
+
+                if (message.Contains(OwningChannel.GetFattyNick()))
+                {
+                    RandomGreeting(message);
+                }
+            }
+        }
+
+        private void RandomGreeting(string message)
+        {
+            Random Rand = new Random();
+
+            int coinFlip = Rand.Next(0, 2);
+            if (coinFlip == 0)
+            {
+                OwningChannel.SendChannelMessage(Greetings[Rand.Next(Greetings.Length)]);
+            }
+            else
+            {
+                string greeting = Greetings[Rand.Next(Greetings.Length)];
+                string petName = PetNames[Rand.Next(PetNames.Length)];
+                OwningChannel.SendChannelMessage(greeting + " " + petName);
             }
         }
     }
