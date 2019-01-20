@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Mail;
 using System.Runtime.Serialization.Json;
 using System.Text;
+using System.Threading;
 
 namespace Fatty
 {
@@ -35,7 +36,11 @@ namespace Fatty
             // Todo: loop through server contexts and connect to each
             ServerContext context = LoadServerConfig();
             EmailSettings = LoadEmailConfig();
-
+            int MaxThreads;
+            int CompletionPortThreads;
+            // todo: checkthreads command that prints to channel
+            ThreadPool.GetMaxThreads(out MaxThreads, out CompletionPortThreads);
+            Console.WriteLine("Max Threads: {0} ---- CompletionPortThreads {1}", MaxThreads, CompletionPortThreads);
             Irc = new IRCConnection(context);
 
             context.Initialize(Irc);
