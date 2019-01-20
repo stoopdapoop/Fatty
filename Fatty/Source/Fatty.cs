@@ -36,11 +36,7 @@ namespace Fatty
             // Todo: loop through server contexts and connect to each
             ServerContext context = LoadServerConfig();
             EmailSettings = LoadEmailConfig();
-            int MaxThreads;
-            int CompletionPortThreads;
-            // todo: checkthreads command that prints to channel
-            ThreadPool.GetMaxThreads(out MaxThreads, out CompletionPortThreads);
-            Console.WriteLine("Max Threads: {0} ---- CompletionPortThreads {1}", MaxThreads, CompletionPortThreads);
+            Console.WriteLine("Core Count: {0}.", Environment.ProcessorCount);
             Irc = new IRCConnection(context);
 
             context.Initialize(Irc);

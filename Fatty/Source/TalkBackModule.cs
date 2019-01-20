@@ -34,7 +34,7 @@ namespace Fatty
                 switch (CommandName)
                 {
                     case "noel":
-                        OwningChannel.SendChannelMessage("NO!");
+                        OwningChannel.SendChannelMessage("NO!");
                         break;
                 }
             }
