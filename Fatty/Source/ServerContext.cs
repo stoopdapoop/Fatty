@@ -1,6 +1,8 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.Serialization;
 
 namespace Fatty
@@ -44,9 +46,12 @@ namespace Fatty
 
         private IRCConnection OwnerConnection { get; set; }
 
+        private LoggingContext Logging;
+
         public void Initialize(IRCConnection irc)
         {
             OwnerConnection = irc;
+            InitLogging();
 
             foreach (ChannelContext context in Channels)
             {
@@ -73,6 +78,30 @@ namespace Fatty
 
         public void HandleServerMessage(string ircUser, string ircChannel, string message)
         {
+            IrcLogUser FoundUser;
+            var UserQuery = Logging.Users.Where(x => x.Nick == ircUser);
+            if (UserQuery.Count() == 0)
+            {
+                IrcLogUser logUser = new IrcLogUser(ircUser);
+                logUser.UserId = 0;
+                Logging.Users.Add(logUser);
+                Logging.SaveChanges();
+                FoundUser = logUser;
+            }
+            else
+            {
+                FoundUser = UserQuery.First();
+            }
+
+            var MessageLog = new ChannelMessageLog();
+            MessageLog.ChannelName = ircChannel;
+            MessageLog.User = FoundUser;
+            MessageLog.Message = message;
+            //MessageLog.Date = DateTime.Now.ToString("YYYY-MM-DD HH:MM:SS.SSS");
+            MessageLog.Date = DateTime.Now;
+            Logging.Messages.Add(MessageLog);
+            Logging.SaveChanges();
+
             if (ChannelMessageEvent != null)
             {
                 foreach (ChannelMessageDelegate chanDel in ChannelMessageEvent.GetInvocationList())
@@ -93,5 +122,13 @@ namespace Fatty
             OwnerConnection.SendMessage(ircChannel, message);
         }
 
+        private void InitLogging()
+        {
+            DbContextOptionsBuilder<LoggingContext> optionsBuilder = new DbContextOptionsBuilder<LoggingContext>();
+            optionsBuilder.UseSqlite("Data Source=Logging.db");
+
+            Logging = new LoggingContext(optionsBuilder.Options);
+            Logging.Database.EnsureCreated();
+        }
     }
 }

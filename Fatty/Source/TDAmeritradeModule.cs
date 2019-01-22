@@ -84,10 +84,7 @@ namespace Fatty
 
         private void OnChannelJoin(string ircChannel)
         {
-            if (InitSuccess)
-                OwningChannel.SendChannelMessage("TD Ameritrade authenticated fine");
-            else
-                OwningChannel.SendChannelMessage("TD Ameritrade didn't authenticate fine");
+            OwningChannel.SendChannelMessage(InitSuccess ? "TD Ameritrade authenticated fine" : "TD Ameritrade didn't authenticate fine");
         }
     }
 }

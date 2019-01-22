@@ -228,6 +228,10 @@ namespace Fatty
                             PartChannel(tokens[4]);
                             bAdminCommand = true;
                             break;
+                        case "msg":
+                            // todo: this
+                            bAdminCommand = true;
+                            break;
                     }
                 }
             }

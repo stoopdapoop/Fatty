@@ -20,6 +20,7 @@ namespace Fatty
 
         void OnChannelMessage(string ircUser, string message)
         {
+            // todo: check auth mask, lol
             if(message.StartsWith(OwningChannel.CommandPrefix))
             {
                 var chunks = message.Split(" ");
@@ -40,11 +41,11 @@ namespace Fatty
             bool success = Fatty.SendEmail(to, String.Format("A message from {0} in {1}", from, OwningChannel.ChannelName), message);
             if(success)
             {
-                OwningChannel.SendChannelMessage(String.Format("sent \"{0}\" to {1}", message, to));
+                OwningChannel.SendMessage(String.Format("sent \"{0}\" to {1}", message, to), from);
             }
             else
             {
-                OwningChannel.SendChannelMessage(String.Format("failed to send \"{0}\" to {1}", message, to));
+                OwningChannel.SendMessage(String.Format("failed to send \"{0}\" to {1}", message, to), from);
             }
         }
     }

@@ -34,7 +34,7 @@ namespace Fatty
                 switch (CommandName)
                 {
                     case "noel":
-                        OwningChannel.SendChannelMessage("NO!");
+                        OwningChannel.SendMessage("NO!", ircUser);
                         break;
                 }
             }
@@ -42,25 +42,25 @@ namespace Fatty
             {
                 if (message.Contains(OwningChannel.GetFattyNick()))
                 {
-                    RandomGreeting(message);
+                    RandomGreeting(ircUser, message);
                 }
             }
         }
 
-        private void RandomGreeting(string message)
+        private void RandomGreeting(string instigator, string message)
         {
             Random Rand = new Random();
 
             int coinFlip = Rand.Next(0, 2);
             if (coinFlip == 0)
             {
-                OwningChannel.SendChannelMessage(Greetings[Rand.Next(Greetings.Length)]);
+                OwningChannel.SendMessage(Greetings[Rand.Next(Greetings.Length)], instigator);
             }
             else
             {
                 string greeting = Greetings[Rand.Next(Greetings.Length)];
                 string petName = PetNames[Rand.Next(PetNames.Length)];
-                OwningChannel.SendChannelMessage(greeting + " " + petName);
+                OwningChannel.SendMessage(greeting + " " + petName, instigator);
             }
         }
     }

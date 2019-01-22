@@ -19,6 +19,9 @@ namespace Fatty
         public bool UseDefaultFeatures { get; set; }
 
         [DataMember]
+        public bool SilentMode { get; set; }
+
+        [DataMember]
         public List<string> FeatureBlacklist;
 
         [DataMember]
@@ -52,9 +55,7 @@ namespace Fatty
                 CommandWhitelist = new List<string>();
 
             if(CommandPrefix == null)
-            {
                 CommandPrefix = ".";
-            }
         }
 
         public void Initialize(ServerContext server)
@@ -93,12 +94,24 @@ namespace Fatty
             return Server.Nick;
         }
 
-        public bool SendChannelMessage(string message)
+        public bool SendMessage(string message, string instigator)
         {
-            //todo: filter based on permissions
-            Server.SendMessage(ChannelName, message);
+            if (SilentMode)
+            {
+                Server.SendMessage(instigator, message);
+                return false;
+            }
+            else
+            {
+                Server.SendMessage(ChannelName, message);
+                return true;
+            }
+        }
 
-            return true;
+        public void SendChannelMessage(string message)
+        {
+            if (!SilentMode)
+                Server.SendMessage(ChannelName, message);
         }
 
         private void HandleChannelMessage(string ircUser, string ircChannel, string message)
