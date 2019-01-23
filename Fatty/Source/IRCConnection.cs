@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Mail;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Threading;
 
@@ -42,8 +43,10 @@ namespace Fatty
                 this.IrcConnection = new TcpClient(Context.ServerURL, Context.ServerPort);
                 this.IrcConnection.ReceiveTimeout = 1000 * 60 * 5;
                 this.IrcStream = this.IrcConnection.GetStream();
-                this.IrcReader = new StreamReader(this.IrcStream);
-                this.IrcWriter = new StreamWriter(this.IrcStream);
+                SslStream sslStream = new SslStream(IrcStream);
+                sslStream.AuthenticateAsClient(Context.ServerURL);
+                this.IrcReader = new StreamReader(sslStream);
+                this.IrcWriter = new StreamWriter(sslStream);
                 PrintToScreen("Connection Successful");
 
                 // Spawn listener Thread
