@@ -11,6 +11,9 @@ namespace Fatty
     public class ServerContext
     {
         [DataMember(IsRequired = true)]
+        public string ServerName { get; private set; }
+
+        [DataMember(IsRequired = true)]
         public string ServerURL { get; private set; }
 
         [DataMember(IsRequired = true)]
@@ -49,12 +52,16 @@ namespace Fatty
 
         private Object LoggingLock;
         private LoggingContext Logging;
+        private ServerLog ServerLogInstance;
+        private Dictionary<string,ChannelLog> ChannelLogInstances;
 
         [OnDeserialized]
         private void DeserializationInitializer(StreamingContext ctx)
         {
             // lock init needs to happen here
             LoggingLock = new object();
+
+            ChannelLogInstances = new Dictionary<string, ChannelLog>();
         }
 
         public void Initialize(IRCConnection irc)
@@ -70,6 +77,25 @@ namespace Fatty
 
         public void HandleChannelJoin(string ircChannel)
         {
+            lock (LoggingLock)
+            {
+                ChannelLog JoiningLog;
+                var ChannelQuery = Logging.Channels.Where( x => x.ChannelName == ircChannel && x.Server == ServerLogInstance);
+                if (ChannelQuery.Count() == 0)
+                {
+                    JoiningLog = new ChannelLog();
+                    JoiningLog.ChannelName = ircChannel;
+                    JoiningLog.Server = ServerLogInstance;
+                    Logging.Channels.Add(JoiningLog);
+                    Logging.SaveChanges();
+                }
+                else
+                {
+                    JoiningLog = ChannelQuery.First();
+                }
+                ChannelLogInstances.TryAdd(ircChannel, JoiningLog);
+            }
+            
             if (ChannelJoinedEvent != null)
             {
                 foreach (ChannelJoinedDelegate chanDel in ChannelJoinedEvent.GetInvocationList())
@@ -90,23 +116,18 @@ namespace Fatty
             // todo: async all this
             lock (LoggingLock)
             {
-                IrcLogUser FoundUser;
-                var UserQuery = Logging.Users.Where(x => x.Nick == ircUser);
-                if (UserQuery.Count() == 0)
+                IrcLogUser FoundUser = Logging.Users.Find(ircUser);
+                if (FoundUser == null)
                 {
-                    IrcLogUser logUser = new IrcLogUser(ircUser);
-                    logUser.UserId = 0;
-                    Logging.Users.Add(logUser);
-                    Logging.SaveChanges();
-                    FoundUser = logUser;
-                }
-                else
-                {
-                    FoundUser = UserQuery.First();
+                    FoundUser = new IrcLogUser(ircUser);
+                    FoundUser.UserId = 0;
+                    FoundUser.Server = ServerLogInstance;
+                    Logging.Users.Add(FoundUser);
+                    // saves later
                 }
 
                 var MessageLog = new ChannelMessageLog();
-                MessageLog.ChannelName = ircChannel;
+                MessageLog.Channel = ChannelLogInstances[ircChannel];
                 MessageLog.User = FoundUser;
                 MessageLog.Message = message;
                 //MessageLog.Date = DateTime.Now.ToString("YYYY-MM-DD HH:MM:SS.SSS");
@@ -137,11 +158,34 @@ namespace Fatty
 
         private void InitLogging()
         {
+            Console.WriteLine("Init Logging...");
             DbContextOptionsBuilder<LoggingContext> optionsBuilder = new DbContextOptionsBuilder<LoggingContext>();
             optionsBuilder.UseSqlite("Data Source=Logging.db");
 
-            Logging = new LoggingContext(optionsBuilder.Options);
-            Logging.Database.EnsureCreated();
+            Console.WriteLine("Ensuring DB is present...");
+
+            lock (LoggingLock)
+            {
+                Logging = new LoggingContext(optionsBuilder.Options);
+                if(Logging.Database.EnsureCreated())
+                {
+                    Console.WriteLine("Database needed to be created");
+                }
+
+
+                var ServerQuery = Logging.Servers.AsNoTracking().Where(x => x.ServerName == ServerName);
+                if (ServerQuery.Count() == 0)
+                {
+                    ServerLog thisServer = new ServerLog(ServerName);
+                    Logging.Servers.Add(thisServer);
+                    Logging.SaveChanges();
+                    ServerLogInstance = thisServer;
+                }
+                else
+                {
+                    ServerLogInstance = ServerQuery.First();
+                }
+            }
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Mail;
@@ -65,9 +66,12 @@ namespace Fatty
         {
             string outputMessage = String.Format("PRIVMSG {0} :{1}\r\n", sendTo, message);
             SendServerMessage(outputMessage);
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine(outputMessage);
-            Console.ResetColor();
+        }
+
+        public void SendNotice(string sendTo, string message)
+        {
+            string outputMessage = String.Format("NOTICE {0} :{1}\r\n", sendTo, message);
+            SendServerMessage(outputMessage);
         }
 
         private void SendServerMessage(string format, params object[] args)
@@ -77,17 +81,25 @@ namespace Fatty
 
         private void SendServerMessage(string message)
         {
+            string outMessage = String.Format("{0}\r\n", message);
             lock (WriteLock)
             {
-                this.IrcWriter.WriteLine("{0}\r\n", message);
+                this.IrcWriter.WriteLine(outMessage);
                 this.IrcWriter.Flush();
+            }
+            // todo: hide identify and pong in log
+            if (!message.StartsWith("PONG"))
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine(outMessage);
+                Console.ResetColor();
             }
         }
 
         public void DisconnectOnExit()
         {
             PrintToScreen("Disconnecting Due to Exit");
-            SendServerMessage(String.Format("QUIT {0}", Context.QuitMessage));
+            SendServerMessage(String.Format("QUIT :{0}", Context.QuitMessage));
         }
 
         private void ListenForServerMessages()
@@ -115,7 +127,7 @@ namespace Fatty
 
         private void PartChannel(string channelName)
         {
-            SendServerMessage("PART {0} {1}", channelName, Context.QuitMessage);
+            SendServerMessage("PART {0} :{1}", channelName, Context.QuitMessage);
         }
 
         public void PrintToScreen(string format, params object[] args)
@@ -123,6 +135,7 @@ namespace Fatty
             PrintToScreen(String.Format(format, args));
         }
 
+        // Todo: lock and force output through here
         public void PrintToScreen(string message)
         {
             if (Context.ShouldPrintToScreen)
@@ -198,6 +211,29 @@ namespace Fatty
             {
                 Context.HandleServerMessage(userSender, messageTo, chatMessage);
             }
+            else if (chatMessage.StartsWith('\u0001') && chatMessage.EndsWith('\u0001'))
+            {
+                string trimmedMessage = chatMessage.Trim('\u0001');
+                string[] trimmedChunks = trimmedMessage.Split();
+                switch(trimmedChunks[0])
+                {
+                    case "PING":
+                        SendNotice(userSender, String.Format("\u0001PONG {0}\u0001", trimmedChunks[1]));
+                        break;
+                    case "VERSION":
+                        System.Reflection.Assembly assembly = System.Reflection.Assembly.GetExecutingAssembly();
+                        FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(assembly.Location);
+                        string version = fvi.FileVersion;
+                        SendNotice(userSender, String.Format("\u0001Fatty v{0}\u0001", version));
+                        break;
+                    case "TIME":
+                        SendNotice(userSender, String.Format("\u0001{0}\u0001", DateTime.Now.ToString()));
+                        break;
+                    case "FINGER":
+                        SendNotice(userSender, "\u0001Hayy Boi\u0001");
+                        break;
+                }
+            }
             else
             {
                 if (PrivateMessageEvent != null)
@@ -234,8 +270,13 @@ namespace Fatty
                             PartChannel(tokens[4]);
                             bAdminCommand = true;
                             break;
-                        case "msg":
+                        case "say":
                             // todo: this
+                            bAdminCommand = true;
+                            break;
+                        case "quit":
+                            DisconnectOnExit();
+                            Environment.Exit(0);
                             bAdminCommand = true;
                             break;
                     }

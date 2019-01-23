@@ -11,6 +11,8 @@ namespace Fatty
     {
         public DbSet<IrcLogUser> Users { get; set; }
         public DbSet<ChannelMessageLog> Messages { get; set; }
+        public DbSet<ServerLog> Servers { get; set; }
+        public DbSet<ChannelLog> Channels { get; set; }
 
         public LoggingContext(DbContextOptions<LoggingContext> options) : base(options)
         {
@@ -28,6 +30,7 @@ namespace Fatty
         [Key]
         public string Nick { get; set; }
         public int UserId { get; set; }
+        public ServerLog Server { get; set; }
 
         public IrcLogUser(string nick)
         {
@@ -41,8 +44,36 @@ namespace Fatty
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
         public IrcLogUser User { get; set; }
-        public string ChannelName { get; set; }
+        public ChannelLog Channel { get; set; }
         public string Message { get; set; }
         public DateTime Date { get; set; }
+    }
+
+    public class ServerLog
+    {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int Id { get; set; }
+        public string ServerName { get; set; }
+
+        public ServerLog(string serverName)
+        {
+            ServerName = serverName;
+        }
+    }
+
+    public class ChannelLog
+    {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int Id { get; set; }
+        public string ChannelName { get; set; }
+        public ServerLog Server { get; set; }
+
+        //public ChannelLog(string channelName, ServerLog server)
+        //{
+        //    ChannelName = channelName;
+        //    Server = server;
+        //}
     }
 }
