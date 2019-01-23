@@ -173,7 +173,7 @@ namespace Fatty
                 }
 
 
-                var ServerQuery = Logging.Servers.AsNoTracking().Where(x => x.ServerName == ServerName);
+                var ServerQuery = Logging.Servers.Where(x => x.ServerName == ServerName);
                 if (ServerQuery.Count() == 0)
                 {
                     ServerLog thisServer = new ServerLog(ServerName);
