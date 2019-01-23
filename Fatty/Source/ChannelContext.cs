@@ -53,13 +53,13 @@ namespace Fatty
 
             if (CommandWhitelist == null)
                 CommandWhitelist = new List<string>();
-
-            if(CommandPrefix == null)
-                CommandPrefix = ".";
         }
 
         public void Initialize(ServerContext server)
         {
+            if(CommandPrefix == null)
+                CommandPrefix = server.CommandPrefix;
+
             Server = server;
             Server.ChannelMessageEvent += HandleChannelMessage;
             Server.ChannelJoinedEvent += HandleChannelJoined;

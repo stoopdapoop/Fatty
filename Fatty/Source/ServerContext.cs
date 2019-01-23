@@ -46,7 +46,16 @@ namespace Fatty
 
         private IRCConnection OwnerConnection { get; set; }
 
+
+        private Object LoggingLock;
         private LoggingContext Logging;
+
+        [OnDeserialized]
+        private void DeserializationInitializer(StreamingContext ctx)
+        {
+            // lock init needs to happen here
+            LoggingLock = new object();
+        }
 
         public void Initialize(IRCConnection irc)
         {
@@ -78,29 +87,33 @@ namespace Fatty
 
         public void HandleServerMessage(string ircUser, string ircChannel, string message)
         {
-            IrcLogUser FoundUser;
-            var UserQuery = Logging.Users.Where(x => x.Nick == ircUser);
-            if (UserQuery.Count() == 0)
+            // todo: async all this
+            lock (LoggingLock)
             {
-                IrcLogUser logUser = new IrcLogUser(ircUser);
-                logUser.UserId = 0;
-                Logging.Users.Add(logUser);
-                Logging.SaveChanges();
-                FoundUser = logUser;
-            }
-            else
-            {
-                FoundUser = UserQuery.First();
-            }
+                IrcLogUser FoundUser;
+                var UserQuery = Logging.Users.Where(x => x.Nick == ircUser);
+                if (UserQuery.Count() == 0)
+                {
+                    IrcLogUser logUser = new IrcLogUser(ircUser);
+                    logUser.UserId = 0;
+                    Logging.Users.Add(logUser);
+                    Logging.SaveChanges();
+                    FoundUser = logUser;
+                }
+                else
+                {
+                    FoundUser = UserQuery.First();
+                }
 
-            var MessageLog = new ChannelMessageLog();
-            MessageLog.ChannelName = ircChannel;
-            MessageLog.User = FoundUser;
-            MessageLog.Message = message;
-            //MessageLog.Date = DateTime.Now.ToString("YYYY-MM-DD HH:MM:SS.SSS");
-            MessageLog.Date = DateTime.Now;
-            Logging.Messages.Add(MessageLog);
-            Logging.SaveChanges();
+                var MessageLog = new ChannelMessageLog();
+                MessageLog.ChannelName = ircChannel;
+                MessageLog.User = FoundUser;
+                MessageLog.Message = message;
+                //MessageLog.Date = DateTime.Now.ToString("YYYY-MM-DD HH:MM:SS.SSS");
+                MessageLog.Date = DateTime.Now;
+                Logging.Messages.Add(MessageLog);
+                Logging.SaveChanges();
+            }
 
             if (ChannelMessageEvent != null)
             {

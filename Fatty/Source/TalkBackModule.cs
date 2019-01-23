@@ -54,13 +54,13 @@ namespace Fatty
             int coinFlip = Rand.Next(0, 2);
             if (coinFlip == 0)
             {
-                OwningChannel.SendMessage(Greetings[Rand.Next(Greetings.Length)], instigator);
+                OwningChannel.SendChannelMessage(Greetings[Rand.Next(Greetings.Length)]);
             }
             else
             {
                 string greeting = Greetings[Rand.Next(Greetings.Length)];
                 string petName = PetNames[Rand.Next(PetNames.Length)];
-                OwningChannel.SendMessage(greeting + " " + petName, instigator);
+                OwningChannel.SendChannelMessage(greeting + " " + petName);
             }
         }
     }

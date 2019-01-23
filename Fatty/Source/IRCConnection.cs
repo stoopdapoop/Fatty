@@ -173,6 +173,12 @@ namespace Fatty
                         HandleChannelJoin(commandTokens);
                         break;
                     }
+                    // Todo: nick issues
+                case "432":
+                    {
+                        SendMessage("nickserv", "IDENTIFY " + Context.AuthPassword);
+                        break;
+                    }
             }
         }
 
