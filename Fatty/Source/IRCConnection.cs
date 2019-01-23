@@ -271,7 +271,8 @@ namespace Fatty
                             bAdminCommand = true;
                             break;
                         case "say":
-                            // todo: this
+                            string sendTo = tokens[4];
+                            SendMessage(sendTo, String.Join(" ", tokens, 5, tokens.Length - 5)); ;
                             bAdminCommand = true;
                             break;
                         case "quit":
