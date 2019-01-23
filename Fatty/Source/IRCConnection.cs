@@ -249,39 +249,49 @@ namespace Fatty
         private void HandleNotice(string[] tokens)
         {
             bool bAdminCommand = false;
-            if(IsAuthenticatedUser(tokens[0]))
+            try
             {
-                if (tokens.Length < 5)
+                if (IsAuthenticatedUser(tokens[0]))
                 {
-                    string userSender = tokens[0].Substring(0, tokens[0].IndexOf('!'));
-                    SendMessage(userSender, "Not enough args");
-                }
-                else
-                {
-                    string messageCommand = tokens[3].TrimStart(':').ToLower();
-                    switch (messageCommand)
+                    if (tokens.Length < 5)
                     {
-                        case "join":
-                            JoinChannel(tokens[4]);
-                            bAdminCommand = true;
-                            break;
-                        case "part":
-                        case "leave":
-                            PartChannel(tokens[4]);
-                            bAdminCommand = true;
-                            break;
-                        case "say":
-                            string sendTo = tokens[4];
-                            SendMessage(sendTo, String.Join(" ", tokens, 5, tokens.Length - 5)); ;
-                            bAdminCommand = true;
-                            break;
-                        case "quit":
-                            DisconnectOnExit();
-                            Environment.Exit(0);
-                            bAdminCommand = true;
-                            break;
+                        string userSender = tokens[0].Substring(0, tokens[0].IndexOf('!'));
+                        SendMessage(userSender, "Not enough args");
+                    }
+                    else
+                    {
+                        string messageCommand = tokens[3].TrimStart(':').ToLower();
+                        switch (messageCommand)
+                        {
+                            case "join":
+                                JoinChannel(tokens[4]);
+                                bAdminCommand = true;
+                                break;
+                            case "part":
+                            case "leave":
+                                PartChannel(tokens[4]);
+                                bAdminCommand = true;
+                                break;
+                            case "say":
+                                string sendTo = tokens[4];
+                                SendMessage(sendTo, String.Join(" ", tokens, 5, tokens.Length - 5)); ;
+                                bAdminCommand = true;
+                                break;
+                            case "quit":
+                                DisconnectOnExit();
+                                Environment.Exit(0);
+                                bAdminCommand = true;
+                                break;
+                        }
                     }
                 }
+            }
+            catch (System.Exception ex)
+            {
+                string userSender = tokens[0].Substring(0, tokens[0].IndexOf('!'));
+                SendMessage(userSender, "something broke");
+                Thread.Sleep(500);
+                SendMessage(userSender, ex.Message);
             }
 
             if (NoticeEvent != null && !bAdminCommand)
