@@ -158,18 +158,18 @@ namespace Fatty
 
         private void InitLogging()
         {
-            Console.WriteLine("Init Logging...");
+            Fatty.PrintToScreen("Init Logging...");
             DbContextOptionsBuilder<LoggingContext> optionsBuilder = new DbContextOptionsBuilder<LoggingContext>();
             optionsBuilder.UseSqlite("Data Source=Logging.db");
 
-            Console.WriteLine("Ensuring DB is present...");
+            Fatty.PrintToScreen("Ensuring DB is present...");
 
             lock (LoggingLock)
             {
                 Logging = new LoggingContext(optionsBuilder.Options);
                 if(Logging.Database.EnsureCreated())
                 {
-                    Console.WriteLine("Database needed to be created");
+                    Fatty.PrintToScreen("Database needed to be created");
                 }
 
 

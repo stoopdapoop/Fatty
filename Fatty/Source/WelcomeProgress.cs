@@ -20,7 +20,7 @@ namespace Fatty
                 {
                     if (messageID < 1 || messageID > 4)
                     {
-                        Console.WriteLine("Received invalid welcome message ID: {0}", messageID);
+                        Fatty.PrintToScreen("Received invalid welcome message ID: {0}", messageID);
                     }
                     else
                     {

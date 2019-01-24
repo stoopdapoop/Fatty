@@ -24,6 +24,8 @@ namespace Fatty
         static private EmailConfig EmailSettings;
         static private bool IsEmailConfigured = false;
 
+        static private Object PrintLock = new object();
+
         public void Launch()
         {
             AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
@@ -36,7 +38,6 @@ namespace Fatty
             // Todo: loop through server contexts and connect to each
             ServerContext context = LoadServerConfig();
             EmailSettings = LoadEmailConfig();
-            Console.WriteLine("Core Count: {0}.", Environment.ProcessorCount);
             Irc = new IRCConnection(context);
 
             context.Initialize(Irc);
@@ -75,7 +76,7 @@ namespace Fatty
             }
             catch (Exception e)
             {
-                Console.WriteLine("Invalid Connections Config: " + e.Message);
+                Fatty.PrintToScreen("Invalid Connections Config: " + e.Message);
                 return null;
             }
         }
@@ -98,7 +99,7 @@ namespace Fatty
                     }
                     catch (Exception e)
                     {
-                        Console.WriteLine("Error: " + e.Message);
+                        Fatty.PrintToScreen("Error: " + e.Message);
                         return false;
                     }
 
@@ -118,10 +119,32 @@ namespace Fatty
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.Message);
+                Fatty.PrintToScreen(e.Message);
                 return null;
             }
         }
 
+        public static void PrintToScreen(string format, params object[] args)
+        {
+            PrintToScreen(String.Format(format, args));
+        }
+
+        public static void PrintToScreen(string message)
+        {
+            lock (PrintLock)
+            {
+                Console.WriteLine(message.TrimEnd());
+            }
+        }
+
+        public static void PrintToScreen(string message, ConsoleColor color)
+        {
+            lock (PrintLock)
+            {
+                Console.ForegroundColor = color;
+                Console.WriteLine(message.TrimEnd());
+                Console.ResetColor();
+            }
+        }
     }
 }

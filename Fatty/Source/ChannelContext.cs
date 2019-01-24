@@ -83,7 +83,7 @@ namespace Fatty
                 if(shouldInstantiate)
                 {
                     FattyModule module = (FattyModule)Activator.CreateInstance(moduleType);
-                    Console.WriteLine("Initializing {0} in {1}", module.ToString(), ChannelName);
+                    Fatty.PrintToScreen("Initializing {0} in {1}", module.ToString(), ChannelName);
                     module.Init(this);
                 }
             }

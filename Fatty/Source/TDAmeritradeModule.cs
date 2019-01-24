@@ -70,14 +70,14 @@ namespace Fatty
             IRestResponse response = client.Execute(request);
             if(response.IsSuccessful)
             {
-                Console.WriteLine("Ameritrade Authentication Sucessful");
+                Fatty.PrintToScreen("Ameritrade Authentication Sucessful");
                 PostAccessTokenResponse result = FattyHelpers.DeserializeFromJsonString<PostAccessTokenResponse>(response.Content);
                 InitSuccess = true;
                 System.IO.File.WriteAllText(@"AmeritradeTokens.pls", response.Content);
             }
             else
             {
-                Console.WriteLine("Ameritrade Authentication Failed");
+                Fatty.PrintToScreen("Ameritrade Authentication Failed");
                 InitSuccess = false;
             }
         }

@@ -33,7 +33,7 @@ namespace Fatty
 
         public void ConnectToServer()
         {
-            Console.WriteLine("Attempting to connect to: {0}:{1}", Context.ServerURL, Context.ServerPort);
+            Fatty.PrintToScreen("Attempting to connect to: {0}:{1}", Context.ServerURL, Context.ServerPort);
 
             RegisterEventCallbacks();
 
@@ -44,23 +44,24 @@ namespace Fatty
                 this.IrcConnection.ReceiveTimeout = 1000 * 60 * 5;
                 this.IrcStream = this.IrcConnection.GetStream();
                 SslStream sslStream = new SslStream(IrcStream);
+                // todo config for using ssl
                 sslStream.AuthenticateAsClient(Context.ServerURL);
                 this.IrcReader = new StreamReader(sslStream);
                 this.IrcWriter = new StreamWriter(sslStream);
-                PrintToScreen("Connection Successful");
+                Fatty.PrintToScreen("Connection Successful");
 
                 // Spawn listener Thread
                 Thread th = new Thread(new ThreadStart(ListenForServerMessages));
                 th.Start();
 
                 // Send user info
-                PrintToScreen("Sending user info...");
+                Fatty.PrintToScreen("Sending user info...");
                 SendServerMessage(String.Format("NICK {0}", Context.Nick));
                 SendServerMessage(String.Format("USER {0} 0 * :{1}", Context.Nick, Context.RealName));
             }
             catch (Exception e)
             {
-                PrintToScreen("Connection Failed: {0}", e.Message);
+                Fatty.PrintToScreen("Connection Failed: {0}", e.Message);
             }
         }
 
@@ -90,30 +91,55 @@ namespace Fatty
                 this.IrcWriter.WriteLine(outMessage);
                 this.IrcWriter.Flush();
             }
-            // todo: hide identify and pong in log
-            if (!message.StartsWith("PONG"))
+
+            if (message.StartsWith("PRIVMSG"))
             {
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine(outMessage);
-                Console.ResetColor();
+                Fatty.PrintToScreen(outMessage, ConsoleColor.Green);
+            }
+            else if (message.StartsWith("NOTICE"))
+            {
+                Fatty.PrintToScreen(outMessage, ConsoleColor.Cyan);
+            }
+            else if (!message.StartsWith("PONG"))
+            {
+                Fatty.PrintToScreen(outMessage, ConsoleColor.Red);
             }
         }
 
         public void DisconnectOnExit()
         {
-            PrintToScreen("Disconnecting Due to Exit");
+            Fatty.PrintToScreen("Disconnecting Due to Exit");
             SendServerMessage(String.Format("QUIT :{0}", Context.QuitMessage));
         }
 
         private void ListenForServerMessages()
         {
+            // todo: handle exeptions without crashing application
             string ircResponse;
             while ((ircResponse = this.IrcReader.ReadLine()) != null)
             {
                 // ignore pings because they just inflate logs
-                if (!ircResponse.StartsWith("PING"))
-                    PrintToScreen(ircResponse);
+                PrintServerMessage(ircResponse);
                 ThreadPool.QueueUserWorkItem(ThreadProc, ircResponse);
+            }
+        }
+
+        private void PrintServerMessage(string message)
+        {
+            if (message.StartsWith("PING"))
+                return;
+
+            string[] messageTokens = message.Split(' ');
+
+            if (messageTokens[1] == "PRIVMSG")
+            {
+                string talkingUser = messageTokens[0].Substring(0, messageTokens[0].IndexOf('!')).TrimStart(':');
+                string userMessage = messageTokens[3].TrimStart(':');
+                Fatty.PrintToScreen(String.Format("{0}<{1}>{2}", messageTokens[2], talkingUser, userMessage), ConsoleColor.DarkCyan);
+            }
+            else
+            {
+                Fatty.PrintToScreen(message);
             }
         }
 
@@ -131,20 +157,6 @@ namespace Fatty
         private void PartChannel(string channelName)
         {
             SendServerMessage("PART {0} :{1}", channelName, Context.QuitMessage);
-        }
-
-        public void PrintToScreen(string format, params object[] args)
-        {
-            PrintToScreen(String.Format(format, args));
-        }
-
-        // Todo: lock and force output through here
-        public void PrintToScreen(string message)
-        {
-            if (Context.ShouldPrintToScreen)
-            {
-                Console.WriteLine(message);
-            }
         }
 
         private void DispatchMessageEvents(string response)
@@ -233,7 +245,7 @@ namespace Fatty
                         SendNotice(userSender, String.Format("\u0001{0}\u0001", DateTime.Now.ToString()));
                         break;
                     case "FINGER":
-                        SendNotice(userSender, "\u0001Hayy Boi\u0001");
+                        SendNotice(userSender, "\u0001 No!\u0001");
                         break;
                 }
             }

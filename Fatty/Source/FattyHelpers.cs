@@ -30,7 +30,7 @@ namespace Fatty
             }
             catch (Exception e)
             {
-                Console.WriteLine("Invalid Connections Config: " + e.Message);
+                Fatty.PrintToScreen("Invalid Connections Config: " + e.Message);
                 return default(T);
             }    
         }
@@ -49,7 +49,7 @@ namespace Fatty
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.Message);
+                Fatty.PrintToScreen(e.Message);
                 return default(T);
             }
         }
