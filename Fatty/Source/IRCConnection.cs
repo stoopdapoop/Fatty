@@ -124,6 +124,7 @@ namespace Fatty
             }
         }
 
+        // todo, use n'th index of space for substring instead of token join
         private void PrintServerMessage(string message)
         {
             if (message.StartsWith("PING"))
@@ -134,8 +135,19 @@ namespace Fatty
             if (messageTokens[1] == "PRIVMSG")
             {
                 string talkingUser = messageTokens[0].Substring(0, messageTokens[0].IndexOf('!')).TrimStart(':');
-                string userMessage = messageTokens[3].TrimStart(':');
+                string userMessage = String.Join(' ', messageTokens, 3, messageTokens.Length - 3).TrimStart(':');
                 Fatty.PrintToScreen(String.Format("{0}<{1}>{2}", messageTokens[2], talkingUser, userMessage), ConsoleColor.DarkCyan);
+            }
+            else if (messageTokens[1].Length == 3 && Char.IsDigit(messageTokens[1][0]))
+            {
+                string serverMessage = String.Join(' ', messageTokens, 3, messageTokens.Length - 3).TrimStart(':');
+                Fatty.PrintToScreen(String.Format("{0}:{1}:{2}", Context.ServerName, messageTokens[1], serverMessage), ConsoleColor.White);
+            }
+            else if(messageTokens[1] == "NOTICE")
+            {
+                string noticeSender = messageTokens[0];
+                string noticeMessage = String.Join(' ', messageTokens, 3, messageTokens.Length - 3).TrimStart(':');
+                Fatty.PrintToScreen(String.Format("{0}:NOTICE {1}", noticeSender, noticeMessage), ConsoleColor.DarkRed);
             }
             else
             {
@@ -233,19 +245,19 @@ namespace Fatty
                 switch(trimmedChunks[0])
                 {
                     case "PING":
-                        SendNotice(userSender, String.Format("\u0001PONG {0}\u0001", trimmedChunks[1]));
+                        SendNotice(userSender, String.Format("\u0001PING {0} PONG\u0001", trimmedChunks[1]));
                         break;
                     case "VERSION":
                         System.Reflection.Assembly assembly = System.Reflection.Assembly.GetExecutingAssembly();
                         FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(assembly.Location);
                         string version = fvi.FileVersion;
-                        SendNotice(userSender, String.Format("\u0001Fatty v{0}\u0001", version));
+                        SendNotice(userSender, String.Format("\u0001VERSION Fatty v{0}\u0001", version));
                         break;
                     case "TIME":
-                        SendNotice(userSender, String.Format("\u0001{0}\u0001", DateTime.Now.ToString()));
+                        SendNotice(userSender, String.Format("\u0001TIME {0}\u0001", DateTime.Now.ToString()));
                         break;
                     case "FINGER":
-                        SendNotice(userSender, "\u0001 No!\u0001");
+                        SendNotice(userSender, "\u0001FINGER No!\u0001");
                         break;
                 }
             }
