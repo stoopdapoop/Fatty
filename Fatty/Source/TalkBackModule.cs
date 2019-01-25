@@ -12,9 +12,9 @@ namespace Fatty
 
         }
 
-        public override void Init(ChannelContext channel)
+        public override void ChannelInit(ChannelContext channel)
         {
-            base.Init(channel);
+            base.ChannelInit(channel);
 
             OwningChannel.ChannelMessageEvent += OnChannelMessage;
         }

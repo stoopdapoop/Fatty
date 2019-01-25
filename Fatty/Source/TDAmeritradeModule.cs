@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Runtime.Serialization;
+using System.Timers;
 using System.Web;
 using RestSharp;
 
@@ -41,18 +42,18 @@ namespace Fatty
             }
         }
 
-        TDAmeritradeConfig Config;
-        bool InitSuccess = false;
+        static TDAmeritradeConfig Config;
+        static bool InitSuccess = false;
+
+        private static Timer RefreshTokenTimer;
 
         // todo: refresh tokens periodically, like twice an accessexpirationdate
 
         const string PostAccessTokenURL = @"https://api.tdameritrade.com/v1/oauth2/token";
 
-        public override void Init(ChannelContext channel)
+        public override void ModuleInit()
         {
-            base.Init(channel);
-
-            channel.ChannelJoinedEvent += OnChannelJoin;
+            base.ModuleInit();
 
             Config = FattyHelpers.DeserializeFromPath<TDAmeritradeConfig>("TDAmeritrade.cfg");
             PostAccessTokenResponse oldResponse = FattyHelpers.DeserializeFromPath<PostAccessTokenResponse>("AmeritradeTokens.pls");
@@ -67,19 +68,29 @@ namespace Fatty
             request.AddParameter("client_id", Config.ClientID);
             request.AddParameter("redirect_uri", Config.RedirectURI);
 
+            // todo: async this
             IRestResponse response = client.Execute(request);
-            if(response.IsSuccessful)
+            if (response.IsSuccessful)
             {
                 Fatty.PrintToScreen("Ameritrade Authentication Sucessful");
                 PostAccessTokenResponse result = FattyHelpers.DeserializeFromJsonString<PostAccessTokenResponse>(response.Content);
                 InitSuccess = true;
                 System.IO.File.WriteAllText(@"AmeritradeTokens.pls", response.Content);
+                Fatty.PrintToScreen("Ameritrade Access expires in {0} seconds\nRefreshToken Expires in {1} seconds", result.AccessExpiresInSeconds, result.RefreshExpiresInSeconds);
+                //RefreshTokenTimer = new Timer(;
             }
             else
             {
                 Fatty.PrintToScreen("Ameritrade Authentication Failed");
                 InitSuccess = false;
             }
+        }
+
+        public override void ChannelInit(ChannelContext channel)
+        {
+            base.ChannelInit(channel);
+
+            channel.ChannelJoinedEvent += OnChannelJoin;
         }
 
         private void OnChannelJoin(string ircChannel)

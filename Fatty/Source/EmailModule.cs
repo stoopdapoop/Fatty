@@ -11,16 +11,15 @@ namespace Fatty
 
         }
 
-        public override void Init(ChannelContext channel)
+        public override void ChannelInit(ChannelContext channel)
         {
-            base.Init(channel);
+            base.ChannelInit(channel);
 
             OwningChannel.ChannelMessageEvent += OnChannelMessage;
         }
 
         void OnChannelMessage(string ircUser, string message)
         {
-            // todo: check auth mask, lol
             if(message.StartsWith(OwningChannel.CommandPrefix))
             {
                 var chunks = message.Split(" ");

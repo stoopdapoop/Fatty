@@ -7,9 +7,17 @@ namespace Fatty
     {
         protected ChannelContext OwningChannel;
 
-        public virtual void Init(ChannelContext channel)
+        // called upon joining a server
+        public virtual void ChannelInit(ChannelContext channel)
         {
             OwningChannel = channel;
+        }
+
+        // called while fatty is starting, before connecting to any servers
+        // ONLY MODIFY STATIC DATA FROM HERE
+        public virtual void ModuleInit()
+        {
+            // STATIC STUFF ONLY
         }
 
         public virtual void RegisterEvents()

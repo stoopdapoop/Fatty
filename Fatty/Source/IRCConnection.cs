@@ -40,14 +40,23 @@ namespace Fatty
             try
             {
                 //Establish connection
+                // todo: beginconnect for async
                 this.IrcConnection = new TcpClient(Context.ServerURL, Context.ServerPort);
                 this.IrcConnection.ReceiveTimeout = 1000 * 60 * 5;
                 this.IrcStream = this.IrcConnection.GetStream();
-                SslStream sslStream = new SslStream(IrcStream);
-                // todo config for using ssl
-                sslStream.AuthenticateAsClient(Context.ServerURL);
-                this.IrcReader = new StreamReader(sslStream);
-                this.IrcWriter = new StreamWriter(sslStream);
+                if (Context.UseSSL)
+                {
+                    SslStream sslStream = new SslStream(IrcStream);
+                    sslStream.AuthenticateAsClient(Context.ServerURL);
+                    this.IrcReader = new StreamReader(sslStream);
+                    this.IrcWriter = new StreamWriter(sslStream);
+                }
+                else
+                {
+                    this.IrcReader = new StreamReader(IrcStream);
+                    this.IrcWriter = new StreamWriter(IrcStream);
+                }
+                
                 Fatty.PrintToScreen("Connection Successful");
 
                 // Spawn listener Thread
@@ -114,13 +123,21 @@ namespace Fatty
 
         private void ListenForServerMessages()
         {
-            // todo: handle exeptions without crashing application
             string ircResponse;
             while ((ircResponse = this.IrcReader.ReadLine()) != null)
             {
-                // ignore pings because they just inflate logs
-                PrintServerMessage(ircResponse);
-                ThreadPool.QueueUserWorkItem(ThreadProc, ircResponse);
+                try
+                {
+                    PrintServerMessage(ircResponse);
+                    ThreadPool.QueueUserWorkItem(ThreadProc, ircResponse);
+                }
+                catch(Exception e)
+                {
+                    Fatty.PrintToScreen("-----------------------------------------------------------------------------\r\n");
+                    Fatty.PrintToScreen(e.Message);
+                    Fatty.PrintToScreen(e.StackTrace);
+                    Fatty.PrintToScreen("-----------------------------------------------------------------------------");
+                }
             }
         }
 
@@ -213,7 +230,6 @@ namespace Fatty
                         HandleChannelJoin(commandTokens);
                         break;
                     }
-                    // Todo: nick issues
                 case "432":
                     {
                         SendMessage("nickserv", "IDENTIFY " + Context.AuthPassword);

@@ -26,10 +26,10 @@ namespace Fatty
         public string RealName { get; private set; } = "FattyBot";
 
         [DataMember(IsRequired = true)]
-        public bool ShouldPrintToScreen { get; private set; }
-
-        [DataMember(IsRequired = true)]
         public string CommandPrefix { get; private set; }
+
+        [DataMember]
+        public bool UseSSL { get; private set; }
 
         [DataMember]
         public string AuthPassword { get; private set; }
@@ -62,6 +62,9 @@ namespace Fatty
             LoggingLock = new object();
 
             ChannelLogInstances = new Dictionary<string, ChannelLog>();
+
+            if (AuthenticatedMasks == null)
+                AuthenticatedMasks = new List<string>();
         }
 
         public void Initialize(IRCConnection irc)
