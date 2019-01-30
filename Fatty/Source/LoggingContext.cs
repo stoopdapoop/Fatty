@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Design;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -18,23 +19,25 @@ namespace Fatty
         {
         }
 
-        //protected override void OnModelCreating(ModelBuilder modelBuilder)
-        //{
-        //    //modelBuilder.Entity<IrcLogUser>().Property(u => u.Id).ValueGeneratedOnAdd();
-        //}
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<IrcLogUser>().HasKey(x => new { x.Nick, x.ServerId });
+        }
     }
-
 
     public class IrcLogUser
     {
         [Key]
         public string Nick { get; set; }
-        public int UserId { get; set; }
+        [Key, ForeignKey("Server")]
+        public int ServerId { get; set; }
         public ServerLog Server { get; set; }
+        public int UserId { get; set; }
 
-        public IrcLogUser(string nick)
+        public IrcLogUser(string nick, int serverId)
         {
             Nick = nick;
+            ServerId = serverId;
         }
     }
 
@@ -43,9 +46,13 @@ namespace Fatty
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
+        [Required]
         public IrcLogUser User { get; set; }
+        [Required]
         public ChannelLog Channel { get; set; }
+        [Required]
         public string Message { get; set; }
+        [Required]
         public DateTime Date { get; set; }
     }
 
@@ -54,6 +61,7 @@ namespace Fatty
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
+        [Required]
         public string ServerName { get; set; }
 
         public ServerLog(string serverName)
@@ -67,7 +75,9 @@ namespace Fatty
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
+        [Required]
         public string ChannelName { get; set; }
+        [Required]
         public ServerLog Server { get; set; }
 
         //public ChannelLog(string channelName, ServerLog server)
@@ -75,5 +85,16 @@ namespace Fatty
         //    ChannelName = channelName;
         //    Server = server;
         //}
+    }
+
+    public class BloggingContextFactory : IDesignTimeDbContextFactory<LoggingContext>
+    {
+        public LoggingContext CreateDbContext(string[] args)
+        {
+            var optionsBuilder = new DbContextOptionsBuilder<LoggingContext>();
+            optionsBuilder.UseSqlite("Data Source=Logging.db");
+
+            return new LoggingContext(optionsBuilder.Options);
+        }
     }
 }

@@ -119,12 +119,11 @@ namespace Fatty
             // todo: async all this
             lock (LoggingLock)
             {
-                IrcLogUser FoundUser = Logging.Users.Find(ircUser);
+                IrcLogUser FoundUser = Logging.Users.Find(ircUser, ServerLogInstance.Id);
                 if (FoundUser == null)
                 {
-                    FoundUser = new IrcLogUser(ircUser);
+                    FoundUser = new IrcLogUser(ircUser, ServerLogInstance.Id);
                     FoundUser.UserId = 0;
-                    FoundUser.Server = ServerLogInstance;
                     Logging.Users.Add(FoundUser);
                     // saves later
                 }
@@ -161,16 +160,13 @@ namespace Fatty
 
         private void InitLogging()
         {
-            Fatty.PrintToScreen("Init Logging...");
-            DbContextOptionsBuilder<LoggingContext> optionsBuilder = new DbContextOptionsBuilder<LoggingContext>();
-            optionsBuilder.UseSqlite("Data Source=Logging.db");
-
-            Fatty.PrintToScreen("Ensuring DB is present...");
-
-            lock (LoggingLock)
+                lock (LoggingLock)
             {
-                Logging = new LoggingContext(optionsBuilder.Options);
-                if(Logging.Database.EnsureCreated())
+                Fatty.PrintToScreen("Init Logging...");
+                var LoggingFactory = new BloggingContextFactory();
+                Logging = LoggingFactory.CreateDbContext(null);
+                Fatty.PrintToScreen("Ensuring DB is present...");
+                if (Logging.Database.EnsureCreated())
                 {
                     Fatty.PrintToScreen("Database needed to be created");
                 }
