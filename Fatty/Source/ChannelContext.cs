@@ -92,6 +92,7 @@ namespace Fatty
                     FattyModule module = (FattyModule)Activator.CreateInstance(moduleType);
                     Fatty.PrintToScreen("Initializing {0} in {1}", module.ToString(), ChannelName);
                     module.ChannelInit(this);
+                    module.RegisterEvents();
                 }
             }
         }
