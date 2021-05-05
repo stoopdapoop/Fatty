@@ -177,6 +177,16 @@ namespace Fatty
             // No state object was passed to QueueUserWorkItem, so stateInfo is null.
             DispatchMessageEvents((string)stateInfo);
         }
+        
+        private void RuntimeJoinChannel(string channelName)
+        {
+            ChannelContext newContext = new ChannelContext();
+            newContext.ChannelName = channelName;
+            newContext.UseDefaultFeatures = true;
+            newContext.Initialize(Context);
+            Context.Channels.Add(newContext);
+            JoinChannel(channelName);
+        }
 
         private void JoinChannel(string channelName)
         {
@@ -307,7 +317,7 @@ namespace Fatty
                         switch (messageCommand)
                         {
                             case "join":
-                                JoinChannel(tokens[4]);
+                                RuntimeJoinChannel(tokens[4]);
                                 bAdminCommand = true;
                                 break;
                             case "part":

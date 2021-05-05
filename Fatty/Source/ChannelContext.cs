@@ -19,7 +19,7 @@ namespace Fatty
         public bool UseDefaultFeatures { get; set; }
 
         [DataMember]
-        public bool SilentMode { get; set; }
+        public bool SilentMode = false;
 
         [DataMember]
         public List<string> FeatureBlacklist;
@@ -41,6 +41,11 @@ namespace Fatty
         [OnDeserialized]
         private void DeserializationInitializer(StreamingContext ctx)
         {
+            DefaultInitializePermissionLists();
+        }
+
+        private void DefaultInitializePermissionLists()
+        {
             // get rid of any nulls that might have cropped up due to deserialization
             if (FeatureBlacklist == null)
                 FeatureBlacklist = new List<string>();
@@ -59,6 +64,8 @@ namespace Fatty
         {
             if(CommandPrefix == null)
                 CommandPrefix = server.CommandPrefix;
+
+            DefaultInitializePermissionLists();
 
             Server = server;
             Server.ChannelMessageEvent += HandleChannelMessage;
