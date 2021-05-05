@@ -56,7 +56,11 @@ namespace Fatty
                     this.IrcReader = new StreamReader(IrcStream);
                     this.IrcWriter = new StreamWriter(IrcStream);
                 }
-                
+
+                IrcWriter.AutoFlush = true;
+                IrcWriter.NewLine = "\r\n";
+
+
                 Fatty.PrintToScreen("Connection Successful");
 
                 // Spawn listener Thread
@@ -81,13 +85,13 @@ namespace Fatty
 
         public void SendMessage(string sendTo, string message)
         {
-            string outputMessage = String.Format("PRIVMSG {0} :{1}\r\n", sendTo, message);
+            string outputMessage = String.Format("PRIVMSG {0} :{1}", sendTo, message);
             SendServerMessage(outputMessage);
         }
 
         public void SendNotice(string sendTo, string message)
         {
-            string outputMessage = String.Format("NOTICE {0} :{1}\r\n", sendTo, message);
+            string outputMessage = String.Format("NOTICE {0} :{1}", sendTo, message);
             SendServerMessage(outputMessage);
         }
 
@@ -98,11 +102,10 @@ namespace Fatty
 
         private void SendServerMessage(string message)
         {
-            string outMessage = String.Format("{0}\r\n", message);
+            string outMessage = String.Format("{0}", message);
             lock (WriteLock)
             {
                 this.IrcWriter.WriteLine(outMessage);
-                this.IrcWriter.Flush();
             }
 
             if (message.StartsWith("PRIVMSG"))
