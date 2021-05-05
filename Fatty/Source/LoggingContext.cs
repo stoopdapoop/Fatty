@@ -32,7 +32,6 @@ namespace Fatty
         [Key, ForeignKey("Server")]
         public int ServerId { get; set; }
         public ServerLog Server { get; set; }
-        public int UserId { get; set; }
 
         public IrcLogUser(string nick, int serverId)
         {
