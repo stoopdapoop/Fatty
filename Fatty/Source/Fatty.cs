@@ -143,7 +143,8 @@ namespace Fatty
         {
             lock (PrintLock)
             {
-                Console.WriteLine(message.TrimEnd());
+                string output = new string(message.Where(c => !char.IsControl(c)).ToArray());
+                Console.WriteLine(output.TrimEnd());
             }
         }
 
@@ -152,7 +153,8 @@ namespace Fatty
             lock (PrintLock)
             {
                 Console.ForegroundColor = color;
-                Console.WriteLine(message.TrimEnd());
+                string output = new string(message.Where(c => !char.IsControl(c)).ToArray());
+                Console.WriteLine(output.TrimEnd());
                 Console.ResetColor();
             }
         }
