@@ -123,7 +123,6 @@ namespace Fatty
                 if (FoundUser == null)
                 {
                     FoundUser = new IrcLogUser(ircUser, ServerLogInstance.Id);
-                    FoundUser.UserId = 0;
                     Logging.Users.Add(FoundUser);
                     // saves later
                 }
@@ -134,8 +133,9 @@ namespace Fatty
                 MessageLog.Message = message;
                 //MessageLog.Date = DateTime.Now.ToString("YYYY-MM-DD HH:MM:SS.SSS");
                 MessageLog.Date = DateTime.Now;
-                Logging.Messages.Add(MessageLog);
+                var entityEntry = Logging.Messages.Add(MessageLog);
                 Logging.SaveChanges();
+                entityEntry.State = EntityState.Detached;
             }
 
             if (ChannelMessageEvent != null)
@@ -166,7 +166,6 @@ namespace Fatty
                 var LoggingFactory = new BloggingContextFactory();
                 Logging = LoggingFactory.CreateDbContext(null);
                 Fatty.PrintToScreen("Ensuring DB is present...");
-                Logging.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
                 if (Logging.Database.EnsureCreated())
                 {
                     Fatty.PrintToScreen("Database needed to be created");
