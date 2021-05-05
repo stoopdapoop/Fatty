@@ -89,8 +89,13 @@ namespace Fatty
         public override void ChannelInit(ChannelContext channel)
         {
             base.ChannelInit(channel);
+        }
 
-            channel.ChannelJoinedEvent += OnChannelJoin;
+        public override void RegisterEvents()
+        {
+            base.RegisterEvents();
+
+            OwningChannel.ChannelJoinedEvent += OnChannelJoin;
         }
 
         private void OnChannelJoin(string ircChannel)
