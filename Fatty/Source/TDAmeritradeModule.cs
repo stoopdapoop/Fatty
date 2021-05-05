@@ -45,7 +45,7 @@ namespace Fatty
         static TDAmeritradeConfig Config;
         static bool InitSuccess = false;
 
-        private static Timer RefreshTokenTimer;
+        //private static Timer RefreshTokenTimer;
 
         // todo: refresh tokens periodically, like twice an accessexpirationdate
 
