@@ -65,6 +65,10 @@ namespace Fatty
 
                 // Send user info
                 Fatty.PrintToScreen("Sending user info...");
+                if(Context.ServerAuthPassword != null)
+                {
+                    SendServerMessage($"Pass {Context.ServerAuthPassword}");
+                }
                 SendServerMessage(String.Format("NICK {0}", Context.Nick));
                 SendServerMessage(String.Format("USER {0} 0 * :{1}", Context.Nick, Context.RealName));
             }
@@ -242,7 +246,7 @@ namespace Fatty
                     }
                 case "432":
                     {
-                        SendMessage("nickserv", "IDENTIFY " + Context.AuthPassword);
+                        SendMessage("nickserv", "IDENTIFY " + Context.NickAuthPassword);
                         break;
                     }
             }
@@ -386,7 +390,7 @@ namespace Fatty
 
         private void OnWelcomeComplete()
         {
-            SendMessage("nickserv", "IDENTIFY " + Context.AuthPassword);
+            SendMessage("nickserv", "IDENTIFY " + Context.NickAuthPassword);
             Context.Channels.ForEach((channelContext) => { JoinChannel(channelContext.ChannelName); });
         }
 

@@ -32,7 +32,10 @@ namespace Fatty
         public bool UseSSL { get; private set; }
 
         [DataMember]
-        public string AuthPassword { get; private set; }
+        public string NickAuthPassword { get; private set; }
+
+        [DataMember]
+        public string ServerAuthPassword { get; private set; }
 
         [DataMember]
         public List<ChannelContext> Channels { get; private set; }
