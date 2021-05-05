@@ -166,6 +166,7 @@ namespace Fatty
                 var LoggingFactory = new BloggingContextFactory();
                 Logging = LoggingFactory.CreateDbContext(null);
                 Fatty.PrintToScreen("Ensuring DB is present...");
+                Logging.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
                 if (Logging.Database.EnsureCreated())
                 {
                     Fatty.PrintToScreen("Database needed to be created");
