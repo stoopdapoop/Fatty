@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.Serialization;
 using System.Linq;
+using System.Text;
 
 namespace Fatty
 {
@@ -79,6 +80,8 @@ namespace Fatty
             Server = server;
             Server.ChannelMessageEvent += HandleChannelMessage;
             Server.ChannelJoinedEvent += HandleChannelJoined;
+
+            RegisterGlobalCommands();
 
             foreach (Type moduleType in Fatty.GetModuleTypes)
             {
@@ -184,6 +187,46 @@ namespace Fatty
                     chanDel(ircChannel);
                 }
             }
+        }
+
+        private void RegisterGlobalCommands()
+        {
+            AvailableCommands.Add("help", new UserCommand("Help", HelpCommand, "Provides help for given command, returns all commands if called with no argument"));
+            AvailableCommands.Add("commands", new UserCommand("Commands", CommandsCommand, "Returns a list of all available commands on this channel."));
+        }
+
+        private void HelpCommand(string ircUser, string ircChannel, string message)
+        {
+            string[] segments = message.Split(" ");
+            if(segments.Length > 1)
+            {
+                UserCommand FoundCommand;
+                AvailableCommands.TryGetValue(segments[1], out FoundCommand);
+                if( FoundCommand != null)
+                {
+                    Server.SendMessage(ircChannel, FoundCommand.CommandHelp);
+                }
+                else
+                {
+                    Server.SendMessage(ircChannel, $"Don't know of a command named {segments[1]}");
+                }
+            }
+            else
+            {
+                CommandsCommand(ircUser, ircChannel, message);
+            }
+        }
+
+        private void CommandsCommand(string ircUser, string ircChannel, string message)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            foreach(var command in AvailableCommands)
+            {
+                sb.Append($"{command.Value.CommandName} ");
+            }
+
+            Server.SendMessage(ircChannel, sb.ToString());
         }
     }
 }
