@@ -197,6 +197,7 @@ namespace Fatty
 
         private void HelpCommand(string ircUser, string ircChannel, string message)
         {
+            message = message.TrimEnd();
             string[] segments = message.Split(" ");
             if(segments.Length > 1)
             {
