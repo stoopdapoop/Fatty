@@ -1,11 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace Fatty
 {
     public class TalkBackModule : FattyModule
     {
-        private static string[] Greetings = { "heddo", "hi", "herro", "hi der", "ayyo", "hey" };
-        private static string[] PetNames = { "bb", "cutie", "babbycakes", "qt", "str8boi" };
+        private static string[] Greetings = { "hi", "hi der", "ayyo", "hey" };
+        private static string[] PetNames = { "bb", "cutie", "babbycakes", "qt" };
 
         public TalkBackModule()
         {
@@ -17,6 +18,17 @@ namespace Fatty
             base.ChannelInit(channel);
         }
 
+
+        public override void GetAvailableCommands(ref List<UserCommand> Commands)
+        {
+            Commands.Add(new UserCommand("Noel", NoelCommand, "returns what noel would say in this situation"));
+        }
+
+        public override void ListCommands(ref List<string> CommandNames)
+        {
+            CommandNames.Add("Noel");
+        }
+
         public override void RegisterEvents()
         {
             base.RegisterEvents();
@@ -26,29 +38,9 @@ namespace Fatty
 
         void OnChannelMessage(string ircUser, string message)
         {
-            if (message.StartsWith(OwningChannel.CommandPrefix))
+            if (message.Contains(OwningChannel.GetFattyNick()))
             {
-                int spacePos = message.IndexOf(" ");
-                int commandPrefixLength = OwningChannel.CommandPrefix.Length;
-                string CommandName;
-                if(spacePos == -1)
-                    CommandName = message.Substring(commandPrefixLength).ToLower();
-                else
-                    CommandName = message.Substring(commandPrefixLength, spacePos - commandPrefixLength).ToLower();
-
-                switch (CommandName)
-                {
-                    case "noel":
-                        OwningChannel.SendMessage("NO!", ircUser);
-                        break;
-                }
-            }
-            else
-            {
-                if (message.Contains(OwningChannel.GetFattyNick()))
-                {
-                    RandomGreeting(ircUser, message);
-                }
+                RandomGreeting(ircUser, message);
             }
         }
 
@@ -67,6 +59,11 @@ namespace Fatty
                 string petName = PetNames[Rand.Next(PetNames.Length)];
                 OwningChannel.SendChannelMessage(greeting + " " + petName);
             }
+        }
+
+        private void NoelCommand(string ircUser, string ircChannel, string message)
+        {
+            OwningChannel.SendMessage("NO!", ircUser);
         }
     }
 }

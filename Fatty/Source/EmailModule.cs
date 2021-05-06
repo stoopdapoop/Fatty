@@ -16,28 +16,27 @@ namespace Fatty
             base.ChannelInit(channel);
         }
 
+        public override void GetAvailableCommands(ref List<UserCommand> Commands)
+        {
+            Commands.Add(new UserCommand("Email", EmailCommand, @"params are : [EmailAddress] [Message]"));
+        }
+
+        public override void ListCommands(ref List<string> CommandNames)
+        {
+            CommandNames.Add("Email");
+        }
+
         public override void RegisterEvents()
         {
             base.RegisterEvents();
-
-            OwningChannel.ChannelMessageEvent += OnChannelMessage;
         }
 
-        void OnChannelMessage(string ircUser, string message)
+        void EmailCommand(string ircUser, string ircChannel, string message)
         {
-            if(message.StartsWith(OwningChannel.CommandPrefix))
-            {
-                var chunks = message.Split(" ");
-                string CommandName = chunks[0].Remove(0, OwningChannel.CommandPrefix.Length).ToLower();
+            string[] chunks = message.Split(" ");
 
-                switch(CommandName)
-                {
-                    case "email":
-                        if(chunks.Length > 2)
-                            SendEmail(chunks[1], ircUser, String.Join(" ", chunks, 2, chunks.Length - 2));
-                        break;
-                }
-            }
+            if (chunks.Length > 2)
+                SendEmail(chunks[1], ircUser, String.Join(" ", chunks, 2, chunks.Length - 2));
         }
 
         void SendEmail(string to, string from, string message)

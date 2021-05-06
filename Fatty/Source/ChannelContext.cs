@@ -38,6 +38,10 @@ namespace Fatty
 
         private ServerContext Server;
 
+        private List<FattyModule> ActiveModules;
+
+        private Dictionary<string, UserCommand> AvailableCommands;
+
         [OnDeserialized]
         private void DeserializationInitializer(StreamingContext ctx)
         {
@@ -58,6 +62,8 @@ namespace Fatty
 
             if (CommandWhitelist == null)
                 CommandWhitelist = new List<string>();
+
+            CommandBlacklist.ForEach(c => c = c.ToLower());
         }
 
         public void Initialize(ServerContext server)
@@ -66,6 +72,9 @@ namespace Fatty
                 CommandPrefix = server.CommandPrefix;
 
             DefaultInitializePermissionLists();
+
+            ActiveModules = new List<FattyModule>();
+            AvailableCommands = new Dictionary<string, UserCommand>();
 
             Server = server;
             Server.ChannelMessageEvent += HandleChannelMessage;
@@ -93,6 +102,19 @@ namespace Fatty
                     Fatty.PrintToScreen("Initializing {0} in {1}", module.ToString(), ChannelName);
                     module.ChannelInit(this);
                     module.RegisterEvents();
+                    ActiveModules.Add(module);
+
+                    List<UserCommand> ModuleCommands = new List<UserCommand>();
+                    module.GetAvailableCommands(ref ModuleCommands);
+
+                    foreach(UserCommand command in ModuleCommands)
+                    {
+                        string commandName = command.CommandName.ToLower();
+                        if(!CommandBlacklist.Contains(commandName))
+                        {
+                            AvailableCommands.Add(commandName, command);
+                        }
+                    }
                 }
             }
         }
@@ -124,6 +146,24 @@ namespace Fatty
 
         private void HandleChannelMessage(string ircUser, string ircChannel, string message)
         {
+            if (message.StartsWith(CommandPrefix))
+            {
+                int spacePos = message.IndexOf(" ");
+                int commandPrefixLength = CommandPrefix.Length;
+                string CommandName;
+                if (spacePos == -1)
+                    CommandName = message.Substring(commandPrefixLength).ToLower();
+                else
+                    CommandName = message.Substring(commandPrefixLength, spacePos - commandPrefixLength).ToLower();
+
+                UserCommand FoundCommand;
+                AvailableCommands.TryGetValue(CommandName, out FoundCommand);
+                if(FoundCommand != null)
+                {
+                    FoundCommand.CommandCallback(ircUser, ircChannel, message);
+                }
+            }
+
             if (ChannelMessageEvent != null)
             {
                 foreach (PluginChannelMessageDelegate chanDel in ChannelMessageEvent.GetInvocationList())

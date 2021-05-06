@@ -1,7 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Runtime.Serialization;
-using System.Timers;
-using System.Web;
 using RestSharp;
 
 namespace Fatty
@@ -101,6 +100,16 @@ namespace Fatty
         private void OnChannelJoin(string ircChannel)
         {
             OwningChannel.SendChannelMessage(InitSuccess ? "TD Ameritrade authenticated fine" : "TD Ameritrade didn't authenticate fine");
+        }
+
+        public override void ListCommands(ref List<string> CommandNames)
+        {
+
+        }
+
+        public override void GetAvailableCommands(ref List<UserCommand> Commands)
+        {
+
         }
     }
 }

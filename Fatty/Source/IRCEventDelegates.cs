@@ -1,6 +1,6 @@
 ﻿namespace Fatty
 {
-
+    public delegate void CommandDelegate(string ircUser, string ircChannel, string message);
     public delegate void PluginChannelMessageDelegate(string ircUser, string message);
     public delegate void PluginChannelJoinedDelegate(string ircChannel);
     public delegate void ChannelJoinedDelegate(string ircChannel);

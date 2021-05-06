@@ -1,9 +1,10 @@
-﻿using System.Runtime.Serialization;
+﻿using System.Collections.Generic;
+using System.Runtime.Serialization;
 
 namespace Fatty
 {
     [DataContract]
-    public class FattyModule
+    public abstract class FattyModule
     {
         protected ChannelContext OwningChannel;
 
@@ -23,5 +24,9 @@ namespace Fatty
         public virtual void RegisterEvents()
         {
         }
+
+        public abstract void ListCommands(ref List<string> CommandNames);
+
+        public abstract void GetAvailableCommands(ref List<UserCommand> Commands);
     }
 }
