@@ -95,6 +95,11 @@ namespace Fatty
             SendServerMessage(outputMessage);
         }
 
+        public void SendCapRequest(string cap)
+        {
+            SendServerMessage($"CAP REQ :{cap}");
+        }
+
         private void SendServerMessage(string format, params object[] args)
         {
             SendServerMessage(String.Format(format, args));
@@ -118,7 +123,7 @@ namespace Fatty
             }
             else if (!message.StartsWith("PONG"))
             {
-                Fatty.PrintToScreen(outMessage, ConsoleColor.Red);
+                Fatty.PrintToScreen(outMessage, ConsoleColor.White);
             }
         }
 
@@ -189,7 +194,6 @@ namespace Fatty
         {
             ChannelContext newContext = new ChannelContext();
             newContext.ChannelName = channelName;
-            newContext.UseDefaultFeatures = true;
             newContext.Initialize(Context);
             Context.Channels.Add(newContext);
             JoinChannel(channelName);
@@ -249,7 +253,7 @@ namespace Fatty
                     }
                 case "432":
                     {
-                        SendMessage("nickserv", "IDENTIFY " + Context.NickAuthPassword);
+                        SendMessage("nickserv", "IDENTIFY {Context.NickAuthPassword}");
                         break;
                     }
             }
@@ -393,7 +397,10 @@ namespace Fatty
 
         private void OnWelcomeComplete()
         {
-            SendMessage("nickserv", "IDENTIFY " + Context.NickAuthPassword);
+            SendMessage("nickserv", $"IDENTIFY {Context.NickAuthPassword}");
+
+
+
             Context.Channels.ForEach((channelContext) => { JoinChannel(channelContext.ChannelName); });
         }
 

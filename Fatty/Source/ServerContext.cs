@@ -73,6 +73,7 @@ namespace Fatty
         public void Initialize(IRCConnection irc)
         {
             OwnerConnection = irc;
+
             InitLogging();
 
             foreach (ChannelContext context in Channels)
@@ -159,6 +160,11 @@ namespace Fatty
         public void SendMessage(string ircChannel, string message)
         {
             OwnerConnection.SendMessage(ircChannel, message);
+        }
+
+        public void SendCapMessage(string cap)
+        {
+            OwnerConnection.SendCapRequest(cap);
         }
 
         private void InitLogging()

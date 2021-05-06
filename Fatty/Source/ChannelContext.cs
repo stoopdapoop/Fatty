@@ -16,9 +16,6 @@ namespace Fatty
         [DataMember(IsRequired = true)]
         public string ChannelName { get; set; }
 
-        [DataMember(IsRequired = true)]
-        public bool UseDefaultFeatures { get; set; }
-
         [DataMember]
         public bool SilentMode = false;
 
@@ -87,14 +84,7 @@ namespace Fatty
             {
                 bool shouldInstantiate = false;
                 string moduleName = moduleType.Name;
-                if (Fatty.GetDefaultModuleTypes.Any(x => x.Name == moduleName))
-                {
-                    if (!FeatureBlacklist.Contains(moduleName))
-                    {
-                        shouldInstantiate = true;
-                    }     
-                }
-                else if(FeatureWhitelist.Contains(moduleName))
+                if(FeatureWhitelist.Contains(moduleName))
                 {
                     shouldInstantiate = true;
                 }
@@ -145,6 +135,11 @@ namespace Fatty
         {
             if (!SilentMode)
                 Server.SendMessage(ChannelName, message);
+        }
+
+        public void SendCapMessage(string cap)
+        {
+            Server.SendCapMessage(cap);
         }
 
         private void HandleChannelMessage(string ircUser, string ircChannel, string message)

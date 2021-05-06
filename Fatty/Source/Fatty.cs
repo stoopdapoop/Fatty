@@ -21,12 +21,10 @@ namespace Fatty
             public List<ServerContext> Contexts { get; protected set; }
         }
 
-        public static IList<Type> GetDefaultModuleTypes { get { return DefaultModuleTypes.AsReadOnly(); } }
         public static IList<Type> GetModuleTypes { get { return ModuleTypes.AsReadOnly(); } }
 
         private IRCConnection Irc;
 
-        private static List<Type> DefaultModuleTypes = new List<Type>();
         private static List<Type> ModuleTypes = new List<Type>();
 
         static private Object EmailLock = new object();
@@ -39,15 +37,14 @@ namespace Fatty
         {
             AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
 
-            DefaultModuleTypes.Add(typeof(TalkBackModule));
             ModuleTypes.Add(typeof(TalkBackModule));
             ModuleTypes.Add(typeof(TDAmeritradeModule));
             ModuleTypes.Add(typeof(EmailModule));
+            ModuleTypes.Add(typeof(TwitchModule));
 
             EmailSettings = LoadEmailConfig();
             // Todo: loop through server contexts and connect to each
             List<ServerContext> ServerContexts = LoadServerConfigs();
-            InitModules(ServerContexts);
 
             foreach (var server in ServerContexts)
             {
@@ -156,25 +153,6 @@ namespace Fatty
                 string output = new string(message.Where(c => !char.IsControl(c)).ToArray());
                 Console.WriteLine(output.TrimEnd());
                 Console.ResetColor();
-            }
-        }
-
-        private void InitModules(List<ServerContext> ServerContexts)
-        {
-            // we only init modules that we're actually using with this config.
-            Dictionary<string, bool> UsedModules = new Dictionary<string, bool>();
-
-            DefaultModuleTypes.ForEach(modName => UsedModules[modName.Name] = true);
-
-            ServerContexts.ForEach(x => x.Channels.ForEach(chan => chan.FeatureWhitelist.ForEach(mod => UsedModules[mod] = true)));
-
-            foreach (var x in UsedModules)
-            {
-                if (x.Value)
-                {
-                    FattyModule thisModule = (FattyModule)(Activator.CreateInstance(Type.GetType(String.Format("Fatty.{0}", x.Key))));
-                    thisModule.ModuleInit();
-                }
             }
         }
     }

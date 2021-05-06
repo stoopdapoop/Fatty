@@ -41,8 +41,8 @@ namespace Fatty
             }
         }
 
-        static TDAmeritradeConfig Config;
-        static bool InitSuccess = false;
+        TDAmeritradeConfig Config;
+        bool InitSuccess = false;
 
         //private static Timer RefreshTokenTimer;
 
@@ -50,9 +50,9 @@ namespace Fatty
 
         const string PostAccessTokenURL = @"https://api.tdameritrade.com/v1/oauth2/token";
 
-        public override void ModuleInit()
+        public override void PostConnectionModuleInit()
         {
-            base.ModuleInit();
+            base.PostConnectionModuleInit();
 
             Config = FattyHelpers.DeserializeFromPath<TDAmeritradeConfig>("TDAmeritrade.cfg");
             PostAccessTokenResponse oldResponse = FattyHelpers.DeserializeFromPath<PostAccessTokenResponse>("AmeritradeTokens.pls");
