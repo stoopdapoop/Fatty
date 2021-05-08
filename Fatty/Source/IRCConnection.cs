@@ -276,7 +276,7 @@ namespace Fatty
 
         private void HandleWelcomeMessage(string[] tokens)
         {
-            byte welcomeID = Byte.Parse(tokens[1]);
+            int welcomeID =  int.Parse(tokens[1]);
             IRCWelcomeProgress.NotifyOfMessage(welcomeID);
         }
 
@@ -443,9 +443,7 @@ namespace Fatty
         {
             SendMessage("nickserv", $"IDENTIFY {Context.NickAuthPassword}");
 
-            Thread.Sleep(500);
-
-            Context.Channels.ForEach((channelContext) => { JoinChannel(channelContext.ChannelName); Thread.Sleep(100); });
+            Context.Channels.ForEach((channelContext) => { JoinChannel(channelContext.ChannelName); });
         }
 
         private void RegisterEventCallbacks()

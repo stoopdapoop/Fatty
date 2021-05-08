@@ -11,10 +11,10 @@ namespace Fatty
             private Object WelcomeLock = new object();
 
             // bitfield to keep track of which messages have been received from the server
-            private byte MessagesReceived;
+            private int MessagesReceived = 0;
             private bool HasFinishedWelcome;
 
-            public void NotifyOfMessage(byte messageID)
+            public void NotifyOfMessage(int messageID)
             {
                 lock (WelcomeLock)
                 {
@@ -24,8 +24,7 @@ namespace Fatty
                     }
                     else
                     {
-                        byte testBit = (byte)(1 << messageID);
-                        MessagesReceived = (byte)(MessagesReceived | testBit);
+                        MessagesReceived += messageID;
 
                         if (IsWelcomeComplete())
                         {
@@ -41,7 +40,7 @@ namespace Fatty
 
             private bool IsWelcomeComplete()
             {
-                return (MessagesReceived == (MessagesReceived & (byte)14));
+                return (MessagesReceived == 1 + 2 + 3 + 4);
             }
         }
     }
