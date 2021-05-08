@@ -12,6 +12,7 @@ namespace Fatty
     {
         public event PluginChannelMessageDelegate ChannelMessageEvent;
         public event PluginChannelJoinedDelegate ChannelJoinedEvent;
+        public event UserJoinedDelegate UserJoinedEvent;
 
         [DataMember(IsRequired = true)]
         public string ChannelName { get; set; }
@@ -77,6 +78,7 @@ namespace Fatty
             Server = server;
             Server.ChannelMessageEvent += HandleChannelMessage;
             Server.ChannelJoinedEvent += HandleChannelJoined;
+            Server.UserJoinedEvent += HandleUserJoined;
 
             RegisterGlobalCommands();
 
@@ -166,8 +168,18 @@ namespace Fatty
             {
                 foreach (PluginChannelMessageDelegate chanDel in ChannelMessageEvent.GetInvocationList())
                 {
-                    FattyModule DelegateModule = (FattyModule)chanDel.Target;
                     chanDel(ircUser, message);
+                }
+            }
+        }
+
+        private void HandleUserJoined(string ircUser, string ircChannel)
+        {
+            if (UserJoinedEvent != null)
+            {
+                foreach (UserJoinedDelegate chanDel in UserJoinedEvent.GetInvocationList())
+                {
+                    chanDel(ircUser, ircChannel);
                 }
             }
         }
@@ -178,7 +190,6 @@ namespace Fatty
             {
                 foreach (PluginChannelJoinedDelegate chanDel in ChannelJoinedEvent.GetInvocationList())
                 {
-                    FattyModule DelegateModule = (FattyModule)chanDel.Target;
                     chanDel(ircChannel);
                 }
             }

@@ -256,6 +256,11 @@ namespace Fatty
                         SendMessage("nickserv", "IDENTIFY {Context.NickAuthPassword}");
                         break;
                     }
+                case "JOIN":
+                    {
+                        HandleUserJoin(commandTokens);
+                        break;
+                    }
             }
         }
 
@@ -387,6 +392,19 @@ namespace Fatty
         private void HandleChannelJoin(string[] tokens)
         {
             Context.HandleChannelJoin(tokens[4]);
+        }
+
+        private void HandleUserJoin(string[] tokens)
+        {
+            int startIndex = tokens[0][0] == ':' ? 1 : 0;
+            int endIndex = tokens[0].IndexOf('!');
+
+            string joiningUser = tokens[0].Substring(startIndex, endIndex - startIndex);
+
+            if (joiningUser != Context.Nick.ToLower())
+            {
+                Context.HandleUserJoinChannel(joiningUser, tokens[2]);
+            }
         }
 
         private void HandlePing(string[] pingTokens)

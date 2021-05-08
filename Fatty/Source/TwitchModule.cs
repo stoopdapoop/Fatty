@@ -27,8 +27,8 @@ namespace Fatty
         {
             base.RegisterEvents();
 
-            
-            
+
+            OwningChannel.UserJoinedEvent += OnUserJoined;
             OwningChannel.ChannelJoinedEvent += OnChannelJoined;
         }
 
@@ -38,6 +38,11 @@ namespace Fatty
             OwningChannel.SendCapMessage(@"twitch.tv/membership");
             OwningChannel.SendCapMessage(@"twitch.tv/commands");
             //OwningChannel.SendCapMessage(@"twitch.tv/tags");
+        }
+
+        private void OnUserJoined(string ircUser, string ircChannel)
+        {
+
         }
     }
 }

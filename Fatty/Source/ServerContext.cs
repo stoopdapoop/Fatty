@@ -50,6 +50,8 @@ namespace Fatty
 
         public event ChannelJoinedDelegate ChannelJoinedEvent;
 
+        public event UserJoinedDelegate UserJoinedEvent;
+
         private IRCConnection OwnerConnection { get; set; }
 
 
@@ -152,6 +154,34 @@ namespace Fatty
                     if (DelegateContext.ChannelName == ircChannel)
                     {
                         chanDel(ircUser, ircChannel, message);
+                    }
+                }
+            }
+        }
+
+        public void HandleUserJoinChannel(string ircUser, string ircChannel)
+        {
+            lock (LoggingLock)
+            {
+                IrcLogUser FoundUser = Logging.Users.Find(ircUser, ServerLogInstance.Id);
+                if (FoundUser == null)
+                {
+                    FoundUser = new IrcLogUser(ircUser, ServerLogInstance.Id);
+                    Logging.Users.Add(FoundUser);
+                    Logging.SaveChanges();
+                }
+            }
+            if(UserJoinedEvent != null)
+            {
+                foreach (UserJoinedDelegate joinDel in UserJoinedEvent.GetInvocationList())
+                {
+                    Debug.Assert(Object.ReferenceEquals(joinDel.Target.GetType(), typeof(ChannelContext)), "Target of ChannelMessageDelegate not of type ChannelContext");
+                    
+                    ChannelContext DelegateContext = (ChannelContext)joinDel.Target;
+
+                    if (DelegateContext.ChannelName == ircChannel)
+                    {
+                        joinDel(ircUser, ircChannel);
                     }
                 }
             }
