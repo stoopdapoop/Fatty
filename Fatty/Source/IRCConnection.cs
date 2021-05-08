@@ -269,8 +269,8 @@ namespace Fatty
         {
             string userSender = tokens[0].Substring(0, tokens[0].IndexOf('!'));
             string messageTo = tokens[2];
-            string chatMessage = originalMessage.Substring(1 + originalMessage.LastIndexOf(':'));
-
+            string chatMessage = originalMessage.Substring(1 + originalMessage.IndexOf(':', 1));
+            
             if (messageTo[0] == '#' || messageTo[0] == '&')
             {
                 Context.HandleServerMessage(userSender, messageTo, chatMessage);
