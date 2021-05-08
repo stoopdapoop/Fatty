@@ -39,7 +39,7 @@ namespace Fatty
                 }
             }
 
-            public bool IsWelcomeComplete()
+            private bool IsWelcomeComplete()
             {
                 return (MessagesReceived == (MessagesReceived & (byte)14));
             }

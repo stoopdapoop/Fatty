@@ -50,7 +50,7 @@ namespace Fatty
 
         public event ChannelJoinedDelegate ChannelJoinedEvent;
 
-        public event UserJoinedDelegate UserJoinedEvent;
+        public event UserJoinPartDelegate UserJoinedEvent;
 
         private IRCConnection OwnerConnection { get; set; }
 
@@ -159,7 +159,7 @@ namespace Fatty
             }
         }
 
-        public void HandleUserJoinChannel(string ircUser, string ircChannel)
+        public void HandleUserJoinChannel(string ircUser, string ircChannel, JoinType type)
         {
             lock (LoggingLock)
             {
@@ -173,7 +173,7 @@ namespace Fatty
             }
             if(UserJoinedEvent != null)
             {
-                foreach (UserJoinedDelegate joinDel in UserJoinedEvent.GetInvocationList())
+                foreach (UserJoinPartDelegate joinDel in UserJoinedEvent.GetInvocationList())
                 {
                     Debug.Assert(Object.ReferenceEquals(joinDel.Target.GetType(), typeof(ChannelContext)), "Target of ChannelMessageDelegate not of type ChannelContext");
                     
@@ -181,7 +181,7 @@ namespace Fatty
 
                     if (DelegateContext.ChannelName == ircChannel)
                     {
-                        joinDel(ircUser, ircChannel);
+                        joinDel(ircUser, ircChannel, type);
                     }
                 }
             }

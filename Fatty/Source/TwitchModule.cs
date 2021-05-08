@@ -40,7 +40,7 @@ namespace Fatty
             //OwningChannel.SendCapMessage(@"twitch.tv/tags");
         }
 
-        private void OnUserJoined(string ircUser, string ircChannel)
+        private void OnUserJoined(string ircUser, string ircChannel, JoinType type)
         {
 
         }

@@ -12,7 +12,7 @@ namespace Fatty
     {
         public event PluginChannelMessageDelegate ChannelMessageEvent;
         public event PluginChannelJoinedDelegate ChannelJoinedEvent;
-        public event UserJoinedDelegate UserJoinedEvent;
+        public event UserJoinPartDelegate UserJoinedEvent;
 
         [DataMember(IsRequired = true)]
         public string ChannelName { get; set; }
@@ -173,13 +173,13 @@ namespace Fatty
             }
         }
 
-        private void HandleUserJoined(string ircUser, string ircChannel)
+        private void HandleUserJoined(string ircUser, string ircChannel, JoinType type)
         {
             if (UserJoinedEvent != null)
             {
-                foreach (UserJoinedDelegate chanDel in UserJoinedEvent.GetInvocationList())
+                foreach (UserJoinPartDelegate chanDel in UserJoinedEvent.GetInvocationList())
                 {
-                    chanDel(ircUser, ircChannel);
+                    chanDel(ircUser, ircChannel, type);
                 }
             }
         }

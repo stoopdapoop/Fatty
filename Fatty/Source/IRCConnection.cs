@@ -178,6 +178,15 @@ namespace Fatty
                 string noticeMessage = String.Join(' ', messageTokens, 3, messageTokens.Length - 3).TrimStart(':');
                 Fatty.PrintToScreen(String.Format("{0}:NOTICE {1}", noticeSender, noticeMessage), ConsoleColor.DarkRed);
             }
+            else if(messageTokens[1] == "JOIN" || messageTokens[1] == "PART")
+            {
+                bool bIsJoin = messageTokens[1] == "JOIN";
+                int startIndex = messageTokens[0][0] == ':' ? 1 : 0;
+                int endIndex = messageTokens[0].IndexOf('!');
+                string joiningUser = messageTokens[0].Substring(startIndex, endIndex - startIndex);
+
+                Fatty.PrintToScreen($"{messageTokens[2]}<{joiningUser}> {messageTokens[1]}", bIsJoin ? ConsoleColor.Cyan : ConsoleColor.DarkYellow);
+            }
             else
             {
                 Fatty.PrintToScreen(message);
@@ -257,8 +266,9 @@ namespace Fatty
                         break;
                     }
                 case "JOIN":
+                case "PART":
                     {
-                        HandleUserJoin(commandTokens);
+                        HandleUserJoinPart(commandTokens);
                         break;
                     }
             }
@@ -394,16 +404,32 @@ namespace Fatty
             Context.HandleChannelJoin(tokens[4]);
         }
 
-        private void HandleUserJoin(string[] tokens)
+        private void HandleUserJoinPart(string[] tokens)
         {
             int startIndex = tokens[0][0] == ':' ? 1 : 0;
             int endIndex = tokens[0].IndexOf('!');
 
             string joiningUser = tokens[0].Substring(startIndex, endIndex - startIndex);
 
+            JoinType type = JoinType.Invalid;
+            
+            switch(tokens[1])
+            {
+                case "JOIN":
+                    type = JoinType.Join;
+                    break;
+                case "PART":
+                    type = JoinType.Part;
+                    break;
+
+                default:
+                    Fatty.PrintToScreen("Invalid Join Type");
+                    break;
+            }
+
             if (joiningUser != Context.Nick.ToLower())
             {
-                Context.HandleUserJoinChannel(joiningUser, tokens[2]);
+                Context.HandleUserJoinChannel(joiningUser, tokens[2], type);
             }
         }
 
@@ -417,9 +443,9 @@ namespace Fatty
         {
             SendMessage("nickserv", $"IDENTIFY {Context.NickAuthPassword}");
 
+            Thread.Sleep(500);
 
-
-            Context.Channels.ForEach((channelContext) => { JoinChannel(channelContext.ChannelName); });
+            Context.Channels.ForEach((channelContext) => { JoinChannel(channelContext.ChannelName); Thread.Sleep(100); });
         }
 
         private void RegisterEventCallbacks()
