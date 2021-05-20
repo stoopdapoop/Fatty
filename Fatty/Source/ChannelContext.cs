@@ -35,6 +35,8 @@ namespace Fatty
         [DataMember]
         public string CommandPrefix { get; private set; }
 
+        public string ServerName => Server.ServerName;
+
         private ServerContext Server;
 
         private List<FattyModule> ActiveModules;

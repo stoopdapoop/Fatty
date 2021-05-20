@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Json;
+using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Text;
 
@@ -35,13 +36,20 @@ namespace Fatty
             }    
         }
 
-        public static T DeserializeFromJsonString<T>(string json)
+        // pass null to get default serializer
+        public static T DeserializeFromJsonString<T>(string json, DataContractJsonSerializerSettings SerializerSettings = null)
         {
             try
             {
                 MemoryStream ms = new MemoryStream(Encoding.Unicode.GetBytes(json));
 
-                var serializer = new DataContractJsonSerializer(typeof(T));
+                if(SerializerSettings == null)
+                {
+                    SerializerSettings = new DataContractJsonSerializerSettings();
+                }
+
+                var serializer = new DataContractJsonSerializer(typeof(T), SerializerSettings);
+                
                 T returnVal;
                 returnVal = (T)serializer.ReadObject(ms);
 
@@ -49,7 +57,7 @@ namespace Fatty
             }
             catch (Exception e)
             {
-                Fatty.PrintToScreen(e.Message);
+                Fatty.PrintToScreen(e.Message, ConsoleColor.Yellow);
                 return default(T);
             }
         }

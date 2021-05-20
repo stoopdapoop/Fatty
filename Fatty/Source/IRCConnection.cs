@@ -65,6 +65,7 @@ namespace Fatty
 
                 // Spawn listener Thread
                 Thread th = new Thread(new ThreadStart(ListenForServerMessages));
+                th.Name = "ListenerDispatchThread";
                 th.Start();
 
                 // Send user info
