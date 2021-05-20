@@ -131,6 +131,8 @@ namespace Fatty
 
             PollTimer = new Timer(TimeSpan.FromSeconds(30.0).TotalMilliseconds);
             PollTimer.Elapsed += PollTimerElapsed;
+            PollTimer.AutoReset = true;
+            PollTimer.Start();
         }
 
 
