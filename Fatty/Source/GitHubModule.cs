@@ -150,7 +150,7 @@ namespace Fatty
                     {
                         foreach(GitHubEvent latestEvent in LatestEvents)
                         {
-                            if (latestEvent.CreatedDateTime == owningContext.LastSeen)
+                            if (latestEvent.CreatedDateTime <= owningContext.LastSeen)
                             {
                                 break;
                             }
