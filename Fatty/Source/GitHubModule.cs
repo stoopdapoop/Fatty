@@ -46,6 +46,12 @@ namespace Fatty
             [DataMember(Name = "actor")]
             public GitHubActor Actor;
 
+            [DataMember(Name = "repo")]
+            GitHubRepo Repo;
+
+            [DataMember(Name = "payload")]
+            GitHubPayload Payload;
+            
             [DataMember(Name = "created_at")]
             public DateTime CreatedDateTime;
         }
@@ -62,6 +68,41 @@ namespace Fatty
             [DataMember(Name = "url")]
             public string URL;
         }
+
+        [DataContract]
+        public class GitHubRepo
+        {
+            [DataMember(Name = "name")]
+            public string RepoName;
+        }
+
+        [DataContract]
+        public class GitHubPayload
+        {
+            [DataMember(Name = "head")]
+            public string Head;
+
+            [DataMember(Name = "size")]
+            public int PayloadSize;
+
+            [DataMember(Name = "commits")]
+            List<GitHubCommit> Commits;
+        }
+
+        [DataContract]
+        public class GitHubCommit
+        {
+            [DataMember(Name = "sha")]
+            public string Hash;
+
+            [DataMember(Name = "message")]
+            public string Message;
+
+            [DataMember(Name = "url")]
+            public string URL;
+        }
+
+
 
         private List<GitHubContext> ActiveChannelContexts;
         private Timer PollTimer;
