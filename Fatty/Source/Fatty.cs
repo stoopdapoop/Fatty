@@ -2,13 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Json;
-using System.Net;
-using System.Net.Mail;
+using System.Linq;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Text;
-using System.Linq;
-using System.Threading;
 
 namespace Fatty
 {
@@ -27,10 +24,6 @@ namespace Fatty
 
         private static List<Type> ModuleTypes = new List<Type>();
 
-        static private Object EmailLock = new object();
-        static private EmailConfig EmailSettings;
-        static private bool IsEmailConfigured = false;
-
         static private Object PrintLock = new object();
 
         public void Launch()
@@ -42,7 +35,6 @@ namespace Fatty
             ModuleTypes.Add(typeof(EmailModule));
             ModuleTypes.Add(typeof(TwitchModule));
 
-            EmailSettings = LoadEmailConfig();
             // Todo: loop through server contexts and connect to each
             List<ServerContext> ServerContexts = LoadServerConfigs();
 
@@ -84,49 +76,6 @@ namespace Fatty
             catch (Exception e)
             {
                 Fatty.PrintToScreen("Invalid Connections Config: " + e.Message);
-                return null;
-            }
-        }
-
-        static public bool SendEmail(string recipient, string subject, string message)
-        {
-            lock (EmailLock)
-            {
-                if (IsEmailConfigured)
-                {
-                    try
-                    {
-                        SmtpClient MailClient = new SmtpClient(EmailSettings.SMTPAddress, EmailSettings.SMTPPort);
-                        MailClient.UseDefaultCredentials = false;
-                        MailClient.Credentials = new NetworkCredential(EmailSettings.EmailAddress, EmailSettings.Password);
-                        MailClient.EnableSsl = true;
-
-                        MailMessage MessageToSend = new MailMessage(EmailSettings.EmailAddress, recipient, subject, message);
-                        MailClient.Send(MessageToSend);
-                    }
-                    catch (Exception e)
-                    {
-                        Fatty.PrintToScreen("Error: " + e.Message);
-                        return false;
-                    }
-
-                    return true;
-                }
-                return false;
-            }
-        }
-
-        private EmailConfig LoadEmailConfig()
-        {
-            try
-            {
-                var ReturnConfig = FattyHelpers.DeserializeFromPath<EmailConfig>("EmailConfig.cfg");
-                IsEmailConfigured = true;
-                return ReturnConfig;
-            }
-            catch (Exception e)
-            {
-                Fatty.PrintToScreen(e.Message);
                 return null;
             }
         }
