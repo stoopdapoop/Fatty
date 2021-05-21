@@ -47,10 +47,10 @@ namespace Fatty
             public GitHubActor Actor;
 
             [DataMember(Name = "repo")]
-            GitHubRepo Repo;
+            public GitHubRepo Repo;
 
             [DataMember(Name = "payload")]
-            GitHubPayload Payload;
+            public GitHubPayload Payload;
             
             [DataMember(Name = "created_at")]
             public DateTime CreatedDateTime;
@@ -86,7 +86,7 @@ namespace Fatty
             public int PayloadSize;
 
             [DataMember(Name = "commits")]
-            List<GitHubCommit> Commits;
+            public List<GitHubCommit> Commits;
         }
 
         [DataContract]
@@ -227,7 +227,18 @@ namespace Fatty
         {
             foreach (GitHubEvent unseen in events)
             {
-                OwningChannel.SendChannelMessage($"new {unseen.EventType} from {unseen.Actor.DisplayName}. More detailed info to come later.");
+                OwningChannel.SendChannelMessage(FormatEventString(unseen));
+            }
+        }
+
+        string FormatEventString(GitHubEvent evnt)
+        {
+            switch(evnt.EventType)
+            {
+                case "PushEvent":
+                    return $"{evnt.Actor.DisplayName} pushed {evnt.Payload.PayloadSize} commits to {evnt.Repo.RepoName}: {evnt.Payload.Commits[0].Message}";
+                default:
+                    return $"{evnt.EventType} Triggered by {evnt.Actor.DisplayName}!";
             }
         }
     }
