@@ -20,7 +20,7 @@ namespace Fatty
 
         public static IList<Type> GetModuleTypes { get { return ModuleTypes.AsReadOnly(); } }
 
-        private IRCConnection Irc;
+        private List<IRCConnection> IrcConnections = new List<IRCConnection>();
 
         private static List<Type> ModuleTypes = new List<Type>();
 
@@ -41,18 +41,22 @@ namespace Fatty
 
             foreach (var server in ServerContexts)
             {
-                Irc = new IRCConnection(server);
+                IRCConnection currentConnection = new IRCConnection(server);
+                IrcConnections.Add(currentConnection);
 
-                server.Initialize(Irc);
-                Irc.ConnectToServer();
+                server.Initialize(currentConnection);
+                currentConnection.ConnectToServer();
             }
         }
 
         private void OnProcessExit(object sender, EventArgs e)
         {
-            if (Irc != null)
+            foreach (IRCConnection connection in IrcConnections)
             {
-                Irc.DisconnectOnExit();
+                if (connection != null)
+                {
+                    connection.DisconnectOnExit();
+                }
             }
         }
 

@@ -54,6 +54,8 @@ namespace Fatty
 
         private IRCConnection OwnerConnection { get; set; }
 
+        // todo: clean up contexts when parting or getting kicked
+
 
         private Object LoggingLock;
         private LoggingContext Logging;
@@ -122,7 +124,6 @@ namespace Fatty
 
         public void HandleServerMessage(string ircUser, string ircChannel, string message)
         {
-            // todo: async all this
             lock (LoggingLock)
             {
                 IrcLogUser FoundUser = Logging.Users.Find(ircUser, ServerLogInstance.Id);
