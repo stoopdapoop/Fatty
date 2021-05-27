@@ -201,6 +201,7 @@ namespace Fatty
         {
             AvailableCommands.Add("help", new UserCommand("Help", HelpCommand, "Provides help for given command, returns all commands if called with no argument"));
             AvailableCommands.Add("commands", new UserCommand("Commands", CommandsCommand, "Returns a list of all available commands on this channel."));
+            AvailableCommands.Add("modules", new UserCommand("Modules", ModulesCommand, "Returns a list of all active modules on this channel."));
         }
 
         private void HelpCommand(string ircUser, string ircChannel, string message)
@@ -233,6 +234,18 @@ namespace Fatty
             foreach(var command in AvailableCommands)
             {
                 sb.Append($"{command.Value.CommandName} ");
+            }
+
+            Server.SendMessage(ircChannel, sb.ToString());
+        }
+
+        private void ModulesCommand(string ircUser, string ircChannel, string message)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            foreach (var mod in ActiveModules)
+            {
+                sb.Append($"{mod.ToString()} ");
             }
 
             Server.SendMessage(ircChannel, sb.ToString());
