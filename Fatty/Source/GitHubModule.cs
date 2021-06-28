@@ -1,4 +1,5 @@
 ﻿using RestSharp;
+using RestSharp.Authenticators;
 using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
@@ -29,6 +30,9 @@ namespace Fatty
 
             [DataMember(IsRequired = true)]
             public string ProjectEndpoint;
+
+            [DataMember(IsRequired = false)]
+            public string AccessToken;
 
             [IgnoreDataMember]
             public DateTime LastSeen;
@@ -163,6 +167,8 @@ namespace Fatty
             foreach (GitHubContext ghContext in ActiveChannelContexts)
             {
                 RestClient client = new RestClient(ghContext.ProjectEndpoint);
+                var authen = new JwtAuthenticator(ghContext.AccessToken);
+                client.Authenticator = authen;
 
                 RestRequest request = new RestRequest("events");
                 request.UserState = ghContext;
@@ -214,6 +220,9 @@ namespace Fatty
                 if (ghContext.IsValidEndpoint)
                 {
                     RestClient client = new RestClient(ghContext.ProjectEndpoint);
+
+                    var authen = new JwtAuthenticator(ghContext.AccessToken);
+                    client.Authenticator = authen;
 
                     RestRequest request = new RestRequest("events");
                     request.UserState = ghContext;
