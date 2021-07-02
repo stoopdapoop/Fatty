@@ -6,6 +6,7 @@ using System.Net.Mail;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Threading;
+using System.Timers;
 
 namespace Fatty
 {
@@ -22,18 +23,35 @@ namespace Fatty
 
         private Object WriteLock = new object();
 
+        private Thread ListenerThread;
+
+        private System.Timers.Timer ConnectionHealthTimer;
+
         public event PrivateMessageDelegate PrivateMessageEvent;
         public event NoticeDelegate NoticeEvent;
 
         public IRCConnection(ServerContext context)
         {
             this.Context = context;
-            this.IRCWelcomeProgress = new WelcomeProgress();
+        }
+
+        private void SendNickAndUser(string nick, string user)
+        {
+            SendServerMessage($"NICK {nick}");
+            SendServerMessage($"USER {nick} 0 * :{user}");
         }
 
         public void ConnectToServer()
         {
             Fatty.PrintToScreen("Attempting to connect to: {0}:{1}", Context.ServerURL, Context.ServerPort);
+
+            if (ConnectionHealthTimer == null)
+            {
+                ConnectionHealthTimer = new System.Timers.Timer(TimeSpan.FromMinutes(10.0).TotalMilliseconds);
+                ConnectionHealthTimer.Elapsed += CheckHealthTimerElapsed;
+                ConnectionHealthTimer.AutoReset = true;
+                ConnectionHealthTimer.Start();
+            }
 
             RegisterEventCallbacks();
 
@@ -42,7 +60,7 @@ namespace Fatty
                 //Establish connection
                 // todo: beginconnect for async
                 this.IrcConnection = new TcpClient(Context.ServerURL, Context.ServerPort);
-                this.IrcConnection.ReceiveTimeout = 1000 * 60 * 5;
+                //this.IrcConnection.ReceiveTimeout = 1000 * 60 * 5;
                 this.IrcStream = this.IrcConnection.GetStream();
                 if (Context.UseSSL)
                 {
@@ -64,9 +82,9 @@ namespace Fatty
                 Fatty.PrintToScreen("Connection Successful");
 
                 // Spawn listener Thread
-                Thread th = new Thread(new ThreadStart(ListenForServerMessages));
-                th.Name = "ListenerDispatchThread";
-                th.Start();
+                ListenerThread = new Thread(new ThreadStart(ListenForServerMessages));
+                ListenerThread.Name = "ListenerDispatchThread";
+                ListenerThread.Start();
 
                 // Send user info
                 Fatty.PrintToScreen("Sending user info...");
@@ -74,12 +92,17 @@ namespace Fatty
                 {
                     SendServerMessage($"Pass {Context.ServerAuthPassword}");
                 }
-                SendServerMessage(String.Format("NICK {0}", Context.Nick));
-                SendServerMessage(String.Format("USER {0} 0 * :{1}", Context.Nick, Context.RealName));
+                SendNickAndUser(Context.Nick, Context.RealName);
+
             }
             catch (Exception e)
             {
                 Fatty.PrintToScreen("Connection Failed: {0}", e.Message);
+                if(ListenerThread.IsAlive)
+                {
+                    ListenerThread.Abort();
+                    Fatty.PrintToScreen("Aborted ListenerThread");
+                }
             }
         }
 
@@ -132,6 +155,11 @@ namespace Fatty
         {
             Fatty.PrintToScreen("Disconnecting Due to Exit");
             SendServerMessage(String.Format("QUIT :{0}", Context.QuitMessage));
+        }
+
+        public bool IsConnectedToServer()
+        {
+            return this.IrcConnection.Connected;
         }
 
         private void ListenForServerMessages()
@@ -449,6 +477,7 @@ namespace Fatty
 
         private void RegisterEventCallbacks()
         {
+            this.IRCWelcomeProgress = new WelcomeProgress();
             IRCWelcomeProgress.WelcomeCompleteEvent += OnWelcomeComplete;
         }
 
@@ -463,6 +492,14 @@ namespace Fatty
             }
 
             return false;
+        }
+
+        private void CheckHealthTimerElapsed(object sender, ElapsedEventArgs e)
+        {
+            if(!IsConnectedToServer())
+            {
+                ConnectToServer();
+            }
         }
     }
 }
