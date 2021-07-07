@@ -25,7 +25,7 @@ namespace Fatty
 
         private Thread ListenerThread;
 
-        private System.Timers.Timer ConnectionHealthTimer;
+        private Thread HealthThread;
 
         public event PrivateMessageDelegate PrivateMessageEvent;
         public event NoticeDelegate NoticeEvent;
@@ -45,12 +45,11 @@ namespace Fatty
         {
             Fatty.PrintToScreen("Attempting to connect to: {0}:{1}", Context.ServerURL, Context.ServerPort);
 
-            if (ConnectionHealthTimer == null)
+            if(HealthThread == null)
             {
-                ConnectionHealthTimer = new System.Timers.Timer(TimeSpan.FromMinutes(10.0).TotalMilliseconds);
-                ConnectionHealthTimer.Elapsed += CheckHealthTimerElapsed;
-                ConnectionHealthTimer.AutoReset = true;
-                ConnectionHealthTimer.Start();
+                HealthThread = new Thread(new ThreadStart(ListenForDisconnect));
+                HealthThread.Name = "HealthThread";
+                HealthThread.Start();
             }
 
             RegisterEventCallbacks();
@@ -159,7 +158,12 @@ namespace Fatty
 
         public bool IsConnectedToServer()
         {
-            return this.IrcConnection.Connected;
+            if (this.IrcConnection != null)
+            {
+                return this.IrcConnection.Connected;
+            }
+
+            return false;
         }
 
         private void ListenForServerMessages()
@@ -494,11 +498,18 @@ namespace Fatty
             return false;
         }
 
-        private void CheckHealthTimerElapsed(object sender, ElapsedEventArgs e)
+        private void ListenForDisconnect()
         {
-            if(!IsConnectedToServer())
+            Thread.Sleep((int)TimeSpan.FromSeconds(30).TotalMilliseconds);
+            while(true)
             {
-                ConnectToServer();
+                Thread.Sleep((int)TimeSpan.FromSeconds(30).TotalMilliseconds);
+
+                if (!IsConnectedToServer())
+                {
+                    ConnectToServer();
+                    Thread.Sleep((int)TimeSpan.FromSeconds(30).Milliseconds);
+                }
             }
         }
     }
