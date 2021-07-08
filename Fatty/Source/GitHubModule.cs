@@ -4,8 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
-using System.Threading.Tasks;
 using System.Timers;
+using System.Threading;
 
 namespace Fatty
 {
@@ -91,6 +91,32 @@ namespace Fatty
 
             [DataMember(Name = "commits")]
             public List<GitHubCommit> Commits;
+
+            [DataMember(Name = "action")]
+            public string ActionName;
+
+            [DataMember(Name = "issue")]
+            public GitHubIssue Issue;
+
+            [DataMember(Name = "comment")]
+            public GitHubComment Comment;
+        }
+
+        [DataContract]
+        public class GitHubIssue
+        {
+            [DataMember(Name = "html_url")]
+            public string PageURL;
+
+            [DataMember(Name = "title")]
+            public string IssueTitle;
+        }
+
+        [DataContract]
+        public class GitHubComment
+        {
+            [DataMember(Name = "body")]
+            public string Body;
         }
 
         [DataContract]
@@ -109,7 +135,7 @@ namespace Fatty
 
 
         private List<GitHubContext> ActiveChannelContexts;
-        private Timer PollTimer;
+        private System.Timers.Timer PollTimer;
 
         public GitHubModule()
         {
@@ -144,7 +170,7 @@ namespace Fatty
                     GitHubContext owningContext = (GitHubContext)owningRequest.UserState;
 
                     List<GitHubEvent> LatestEvents = FattyHelpers.DeserializeFromJsonString<List<GitHubEvent>>(r.Content, SerializerSettings);
-                    if (LatestEvents.Count > 0)
+                    if (LatestEvents != null && LatestEvents.Count > 0)
                     {
                         owningContext.LastSeen = LatestEvents[0].CreatedDateTime;
                         owningContext.IsValidEndpoint = true;
@@ -176,7 +202,7 @@ namespace Fatty
                 client.ExecuteAsync(request, responseCallback);
             }
 
-            PollTimer = new Timer(TimeSpan.FromSeconds(30.0).TotalMilliseconds);
+            PollTimer = new System.Timers.Timer(TimeSpan.FromSeconds(30.0).TotalMilliseconds);
             PollTimer.Elapsed += PollTimerElapsed;
             PollTimer.AutoReset = true;
             PollTimer.Start();
@@ -193,7 +219,7 @@ namespace Fatty
 
                     List<GitHubEvent> LatestEvents = FattyHelpers.DeserializeFromJsonString<List<GitHubEvent>>(r.Content, SerializerSettings);
                     List<GitHubEvent> UnseenEvents = new List<GitHubEvent>();
-                    if (LatestEvents.Count > 0)
+                    if (LatestEvents != null && LatestEvents.Count > 0)
                     {
                         foreach(GitHubEvent latestEvent in LatestEvents)
                         {
@@ -237,6 +263,7 @@ namespace Fatty
             foreach (GitHubEvent unseen in events)
             {
                 OwningChannel.SendChannelMessage(FormatEventString(unseen));
+                Thread.Sleep(2000);
             }
         }
 
@@ -245,9 +272,14 @@ namespace Fatty
             switch(evnt.EventType)
             {
                 case "PushEvent":
-                    return $"{evnt.Actor.DisplayName} pushed {evnt.Payload.PayloadSize} commits to {evnt.Repo.RepoName}: {evnt.Payload.Commits[0].Message}";
+                    string commitURL = $"https://www.github.com/{evnt.Repo.RepoName}/commit/{evnt.Payload.Head.Substring(0,8)}";
+                    return $"{evnt.Actor.DisplayName} pushed {evnt.Payload.PayloadSize} commits to {evnt.Repo.RepoName}: {evnt.Payload.Commits[0].Message} - {commitURL}";
+                case "IssuesEvent":
+                    return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} issue \"{evnt.Payload.Issue.IssueTitle}\" - {evnt.Payload.Issue.PageURL}";
+                case "IssueCommentEvent":
+                    return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} comment \"{evnt.Payload.Issue.IssueTitle}\" - {evnt.Payload.Issue.PageURL} // {evnt.Payload.Comment.Body}";
                 default:
-                    return $"{evnt.EventType} Triggered by {evnt.Actor.DisplayName}!";
+                    return $"Unhandled Event \"{evnt.EventType}\" Triggered by {evnt.Actor.DisplayName}! Fix or ignore.";
             }
         }
     }
