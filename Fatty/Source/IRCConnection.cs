@@ -27,6 +27,8 @@ namespace Fatty
 
         private Thread HealthThread;
 
+        private bool ListenerIsListening = false;
+
         public event PrivateMessageDelegate PrivateMessageEvent;
         public event NoticeDelegate NoticeEvent;
 
@@ -158,17 +160,13 @@ namespace Fatty
 
         public bool IsConnectedToServer()
         {
-            if (this.IrcConnection != null)
-            {
-                return this.IrcConnection.Connected;
-            }
-
-            return false;
+            return ListenerIsListening;
         }
 
         private void ListenForServerMessages()
         {
             string ircResponse;
+            ListenerIsListening = true;
             while ((ircResponse = this.IrcReader.ReadLine()) != null)
             {
                 try
@@ -184,6 +182,9 @@ namespace Fatty
                     Fatty.PrintToScreen("-----------------------------------------------------------------------------");
                 }
             }
+
+            Fatty.PrintToScreen("Listener Died");
+            ListenerIsListening = false;
         }
 
         // todo, use n'th index of space for substring instead of token join
