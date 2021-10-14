@@ -286,7 +286,7 @@ namespace Fatty
                 case "PullRequestEvent":
                     return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} pull request for {evnt.Repo.RepoName}";
                 case "DeleteEvent":
-                    return $"{evnt.Actor.DisplayName} triggered a delete event."
+                    return $"{evnt.Actor.DisplayName} triggered a delete event.";
                 default:
                     return $"Unhandled Event \"{evnt.EventType}\" Triggered by {evnt.Actor.DisplayName}! Fix or ignore.";
             }
