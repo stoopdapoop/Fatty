@@ -5,8 +5,8 @@ namespace Fatty
 {
     public class TalkBackModule : FattyModule
     {
-        private static string[] Greetings = { "hi", "hi der", "ayyo", "hey" };
-        private static string[] PetNames = { "bb", "cutie", "babbycakes", "qt" };
+        private static string[] Greetings = { "hi", "hi der", "ayyo", "hey", "ayy", "yo", "whattup", "hi hi", "ey", "hello" };
+        private static string[] PetNames = { "bb", "cutie", "babbycakes", "qt", "my wide friend", "bruh" };
 
         public TalkBackModule()
         {
