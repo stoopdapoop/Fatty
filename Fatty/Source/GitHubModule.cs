@@ -100,6 +100,15 @@ namespace Fatty
 
             [DataMember(Name = "comment")]
             public GitHubComment Comment;
+            
+            [DataMember(Name = "ref_type")]
+            public string RefType;
+
+            [DataMember(Name = "member")]
+            public GitHubMember Member;
+
+            [DataMember(Name = "release")]
+            public GitHubRelease Release;
         }
 
         [DataContract]
@@ -132,7 +141,27 @@ namespace Fatty
             public string URL;
         }
 
-        class FattyRequest : RestRequest
+        [DataContract]
+        public class GitHubMember
+        {
+            [DataMember(Name = "login")]
+            public string Login;
+
+            [DataMember(Name = "name")]
+            public string Name;
+        }
+
+        [DataContract]
+        public class GitHubRelease
+        {
+            [DataMember(Name = "body")]
+            public string Body;
+
+            [DataMember(Name = "html_url")]
+            public string URL;
+        }
+
+            class FattyRequest : RestRequest
         {
             public FattyRequest(string resource) : base(resource) { }
             public object UserState { get; set; }
@@ -286,7 +315,21 @@ namespace Fatty
                 case "PullRequestEvent":
                     return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} pull request for {evnt.Repo.RepoName}";
                 case "DeleteEvent":
-                    return $"{evnt.Actor.DisplayName} triggered a delete event.";
+                    return $"{evnt.Actor.DisplayName} Deleted {evnt.Payload.RefType} from {evnt.Repo.RepoName}";
+                case "CommitCommentEvent":
+                    return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} commit comment in {evnt.Repo.RepoName}";
+                case "CreateEvent":
+                    return $"{evnt.Actor.DisplayName} created {evnt.Payload.RefType} in {evnt.Repo.RepoName}";
+                case "ForkEvent":
+                    return $"{evnt.Actor.DisplayName} forked {evnt.Repo.RepoName}";
+                case "MemberEvent":
+                    return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} member {evnt.Payload.Member.Name} \"{evnt.Payload.Member.Login}\" to {evnt.Repo.RepoName}";
+                case "PublicEvent":
+                    return $"{evnt.Actor.DisplayName} made {evnt.Repo.RepoName} public";
+                case "WatchEvent":
+                    return $"{evnt.Actor.DisplayName} started watching {evnt.Repo.RepoName}!!";
+                case "ReleaseEvent":
+                    return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} release in {evnt.Repo.RepoName}. \"{evnt.Payload.Release.Body}\" -- {evnt.Payload.Release.URL}";
                 default:
                     return $"Unhandled Event \"{evnt.EventType}\" Triggered by {evnt.Actor.DisplayName}! Fix or ignore.";
             }
