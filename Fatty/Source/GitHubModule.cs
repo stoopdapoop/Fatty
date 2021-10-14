@@ -283,6 +283,10 @@ namespace Fatty
                     return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} issue \"{evnt.Payload.Issue.IssueTitle}\" - {evnt.Payload.Issue.PageURL}";
                 case "IssueCommentEvent":
                     return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} comment \"{evnt.Payload.Issue.IssueTitle}\" - {evnt.Payload.Issue.PageURL} // {evnt.Payload.Comment.Body}";
+                case "PullRequestEvent":
+                    return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} pull request for {evnt.Repo.RepoName}";
+                case "DeleteEvent":
+                    return $"{evnt.Actor.DisplayName} triggered a delete event."
                 default:
                     return $"Unhandled Event \"{evnt.EventType}\" Triggered by {evnt.Actor.DisplayName}! Fix or ignore.";
             }
