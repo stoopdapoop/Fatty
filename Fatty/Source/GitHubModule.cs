@@ -132,6 +132,11 @@ namespace Fatty
             public string URL;
         }
 
+        class FattyRequest : RestRequest
+        {
+            public FattyRequest(string resource) : base(resource) { }
+            public object UserState { get; set; }
+        }
 
 
         private List<GitHubContext> ActiveChannelContexts;
@@ -164,9 +169,9 @@ namespace Fatty
             base.ChannelInit(channel);
 
             Action<IRestResponse> responseCallback = r => {
-                if (r.Request is RestRequest)
+                if (r.Request is FattyRequest)
                 {
-                    RestRequest owningRequest = (RestRequest)r.Request;
+                    FattyRequest owningRequest = (FattyRequest)r.Request;
                     GitHubContext owningContext = (GitHubContext)owningRequest.UserState;
 
                     List<GitHubEvent> LatestEvents = FattyHelpers.DeserializeFromJsonString<List<GitHubEvent>>(r.Content, SerializerSettings);
@@ -196,7 +201,7 @@ namespace Fatty
                 var authen = new JwtAuthenticator(ghContext.AccessToken);
                 client.Authenticator = authen;
 
-                RestRequest request = new RestRequest("events");
+                FattyRequest request = new FattyRequest("events");
                 request.UserState = ghContext;
 
                 client.ExecuteAsync(request, responseCallback);
@@ -212,9 +217,9 @@ namespace Fatty
         void PollTimerElapsed(object sender, ElapsedEventArgs e)
         {
             Action<IRestResponse> responseCallback = r => {
-                if (r.Request is RestRequest)
+                if (r.Request is FattyRequest)
                 {
-                    RestRequest owningRequest = (RestRequest)r.Request;
+                    FattyRequest owningRequest = (FattyRequest)r.Request;
                     GitHubContext owningContext = (GitHubContext)owningRequest.UserState;
 
                     List<GitHubEvent> LatestEvents = FattyHelpers.DeserializeFromJsonString<List<GitHubEvent>>(r.Content, SerializerSettings);
@@ -250,7 +255,7 @@ namespace Fatty
                     var authen = new JwtAuthenticator(ghContext.AccessToken);
                     client.Authenticator = authen;
 
-                    RestRequest request = new RestRequest("events");
+                    FattyRequest request = new FattyRequest("events");
                     request.UserState = ghContext;
 
                     client.ExecuteAsync(request, responseCallback);
