@@ -115,7 +115,7 @@ namespace Fatty
             XmlNodeList res = xmlDoc.GetElementsByTagName("queryresult");
             if (res[0].Attributes["success"].Value == "false")
             {
-                messageAccumulator.Append("Query failed: ");
+                messageAccumulator.Append("Query failed. ");
                 res = xmlDoc.GetElementsByTagName("tip");
                 for (int i = 0; i < res.Count; i++)
                 {
@@ -144,17 +144,38 @@ namespace Fatty
             {
                 res = xmlDoc.GetElementsByTagName("plaintext");
 
-                for (int i = 0; i < res.Count; i++)
+                string inputInterpretation = null;
+                string inputResult = null;
+
+                if(res.Count >= 2)
+                {
+                    inputInterpretation = res[0].InnerText;
+                    inputResult = res[1].InnerText;
+                }
+
+                messageAccumulator.Append($"{inputResult} [{inputInterpretation}] |");
+
+                HashSet<string> DisplayedDescriptionType = new HashSet<string>();
+
+                for (int i = 2; i < res.Count; i++)
                 {
                     string value = res[i].InnerText;
                     string description = res[i].ParentNode.ParentNode.Attributes["title"].Value;
-                    if (description == "Number line")
+
+                    if (value.Length == 0)
                         continue;
-                    description = description + ":" + value;
-                    if (description.Length + messageOverhead + messageAccumulator.Length <= 480)
-                        messageAccumulator.Append(description + " || ");
+
+                    // wolfram likes to spam a bunch of the same types of subpods, so we just display the first of each kind.
+                    if (DisplayedDescriptionType.Contains(description))
+                        continue;
+
+                    DisplayedDescriptionType.Add(description);
+
+                    string elementOutput = $"{description}:{value}";
+                    if (elementOutput.Length + messageOverhead + messageAccumulator.Length <= 480)
+                        messageAccumulator.Append($"{elementOutput} § ");
                     else
-                        break;
+                        continue;
                 }
                 if (messageAccumulator.Length > 0)
                 {
