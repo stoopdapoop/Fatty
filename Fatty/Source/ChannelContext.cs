@@ -250,5 +250,14 @@ namespace Fatty
 
             Server.SendMessage(ircChannel, sb.ToString());
         }
+
+        public void PostConnectionInitModules()
+        {
+            foreach(FattyModule module in ActiveModules)
+            {
+                module.PostConnectionModuleInit();
+            }
+        }
+
     }
 }

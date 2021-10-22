@@ -95,6 +95,11 @@ namespace Fatty
                 }
                 SendNickAndUser(Context.Nick, Context.RealName);
 
+                foreach( ChannelContext chanContext in Context.Channels)
+                {
+                    chanContext.PostConnectionInitModules();
+                }
+
             }
             catch (Exception e)
             {
