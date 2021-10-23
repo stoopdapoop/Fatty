@@ -298,7 +298,10 @@ namespace Fatty
             foreach (GitHubEvent unseen in events)
             {
                 OwningChannel.SendChannelMessage(FormatEventString(unseen));
-                Thread.Sleep(2000);
+                if (events.Count > 1)
+                {
+                    Thread.Sleep(2000);
+                }
             }
         }
 
