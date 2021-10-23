@@ -6,6 +6,7 @@ using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Timers;
 using System.Threading;
+using System.Text;
 
 namespace Fatty
 {
@@ -306,8 +307,7 @@ namespace Fatty
             switch(evnt.EventType)
             {
                 case "PushEvent":
-                    string commitURL = $"https://www.github.com/{evnt.Repo.RepoName}/commit/{evnt.Payload.Head.Substring(0,8)}";
-                    return $"{evnt.Actor.DisplayName} pushed {evnt.Payload.PayloadSize} commits to {evnt.Repo.RepoName}: {evnt.Payload.Commits[0].Message} - {commitURL}";
+                    return GetPushEventString(evnt);
                 case "IssuesEvent":
                     return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} issue \"{evnt.Payload.Issue.IssueTitle}\" - {evnt.Payload.Issue.PageURL}";
                 case "IssueCommentEvent":
@@ -333,6 +333,24 @@ namespace Fatty
                 default:
                     return $"Unhandled Event \"{evnt.EventType}\" Triggered by {evnt.Actor.DisplayName}! Fix or ignore.";
             }
+        }
+
+        string GetPushEventString(GitHubEvent evnt)
+        {
+            int commitCount = evnt.Payload.PayloadSize;
+            StringBuilder messageAccumulator = new StringBuilder();
+
+            messageAccumulator.Append($"{evnt.Actor.DisplayName} pushed {evnt.Payload.PayloadSize} commits to {evnt.Repo.RepoName}: ");
+            for (int i = 0; i < commitCount; ++i)
+            {
+                messageAccumulator.Append($"{evnt.Payload.Commits[i].Message} - {evnt.Payload.Commits[i].URL}");
+                if(i != commitCount - 1)
+                {
+                    messageAccumulator.Append(" || ");
+                }
+            }
+
+            return messageAccumulator.ToString();
         }
     }
 }
