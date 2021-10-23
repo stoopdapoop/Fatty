@@ -31,7 +31,7 @@ namespace Fatty
             }
             catch (Exception e)
             {
-                Fatty.PrintToScreen("Invalid Connections Config: " + e.Message);
+                Fatty.PrintToScreen("Invalid Connections Config: " + e.Message, ConsoleColor.Yellow);
                 return default(T);
             }    
         }
@@ -61,5 +61,53 @@ namespace Fatty
                 return default(T);
             }
         }
+
+        public static string JsonSerializeFromObject<T>(T TargetObject, DataContractJsonSerializerSettings SerializerSettings = null)
+        {
+            try
+            {
+                using (MemoryStream memStream = new MemoryStream())
+                {
+                    if (SerializerSettings == null)
+                    {
+                        SerializerSettings = new DataContractJsonSerializerSettings();
+                    }
+
+                    DataContractJsonSerializer ser = new DataContractJsonSerializer(typeof(T), SerializerSettings);
+                    ser.WriteObject(memStream, TargetObject);
+
+
+                    StreamReader sr = new StreamReader(memStream);
+                    memStream.Position = 0;
+
+                    return sr.ReadToEnd();
+                }
+            }
+            catch (Exception e)
+            {
+                Fatty.PrintToScreen(e.Message, ConsoleColor.Yellow);
+                return default(string);
+            }
+        }
+
+        public static string RemoveCommandName(string message)
+        {
+            int firstSpace = message.IndexOf(" ");
+            if (message.Length > firstSpace)
+            {
+                return message.Substring(message.IndexOf(" ") + 1);
+            }
+            else
+            {
+                return "";
+            }
+        }
+
+        // todo: implement
+        public static int GetMessageOverhead(string source)
+        {
+            return 20;
+        }
+
     }
 }

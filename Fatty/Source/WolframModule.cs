@@ -93,7 +93,7 @@ namespace Fatty
                 return;
             }
 
-            message = message.Substring(message.IndexOf(" ") + 1);
+            message = FattyHelpers.RemoveCommandName(message);
             string args = HttpUtility.UrlEncode(message);
             string searchURL = $"http://api.wolframalpha.com/v2/query?input={args}&appid={Config.WolframAlphaKey}";
             HttpWebRequest searchRequest = HttpWebRequest.Create(searchURL) as HttpWebRequest;

@@ -36,6 +36,7 @@ namespace Fatty
             ModuleTypes.Add(typeof(TwitchModule));
             ModuleTypes.Add(typeof(GitHubModule));
             ModuleTypes.Add(typeof(WolframModule));
+            ModuleTypes.Add(typeof(GoogleModule));
 
             // Todo: loop through server contexts and connect to each
             List<ServerContext> ServerContexts = LoadServerConfigs();

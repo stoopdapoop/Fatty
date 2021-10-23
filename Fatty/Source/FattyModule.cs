@@ -24,6 +24,7 @@ namespace Fatty
         {
         }
 
+        // todo: remove this
         public abstract void ListCommands(ref List<string> CommandNames);
 
         public abstract void GetAvailableCommands(ref List<UserCommand> Commands);
