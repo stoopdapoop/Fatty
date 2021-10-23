@@ -38,20 +38,6 @@ namespace Fatty
         }
 
         [DataContract]
-        private class ShortURL
-        {
-            [DataMember]
-            public string id { get; set; }
-        }
-
-        [DataContract]
-        private class LongURL
-        {
-            [DataMember]
-            public string longURL { get; set; }
-        }
-
-        [DataContract]
         private class SourceUrl
         {
             [DataMember]
@@ -86,14 +72,12 @@ namespace Fatty
         {
             CommandNames.Add("g");
             CommandNames.Add("gis");
-            CommandNames.Add("shorten");
         }
 
         public override void GetAvailableCommands(ref List<UserCommand> Commands)
         {
             Commands.Add(new UserCommand("g", Google, "google search"));
             Commands.Add(new UserCommand("gis", GoogleImageSearch, "google image search"));
-            Commands.Add(new UserCommand("shorten", URLShorten, "shorten URLS"));
         }
 
         public override void PostConnectionModuleInit()
@@ -123,38 +107,6 @@ namespace Fatty
             string argument = FattyHelpers.RemoveCommandName(message);
             string searchURL = $"https://www.googleapis.com/customsearch/v1?key={Config.GoogleAPIKey}&cx={Config.GoogleCustomSearchID}&searchType=image&q={argument}";
             GoogleAPIPrinter(searchURL);
-        }
-
-        public void URLShorten(string ircUser, string ircChannel, string message)
-        {
-            string shortURL = GetShortURL(FattyHelpers.RemoveCommandName(message));
-
-            OwningChannel.SendChannelMessage(shortURL);
-        }
-
-        public string GetShortURL(string longURL)
-        {
-            string searchURL = $"https://www.googleapis.com/urlshortener/v1/url?key={Config.GoogleAPIKey}";
-
-            HttpWebRequest searchRequest = HttpWebRequest.Create(searchURL) as HttpWebRequest;
-
-            ASCIIEncoding encoder = new ASCIIEncoding();
-            LongURL urlObject = new LongURL();
-            urlObject.longURL = longURL;
-            string pls = FattyHelpers.JsonSerializeFromObject<LongURL>(urlObject);
-            byte[] data = encoder.GetBytes(pls);
-
-            searchRequest.ContentType = "application/json";
-            searchRequest.ContentLength = data.Length;
-            searchRequest.Expect = "application/json";
-            searchRequest.Method = "POST";
-            searchRequest.GetRequestStream().Write(data, 0, data.Length);
-            HttpWebResponse searchResponse = searchRequest.GetResponse() as HttpWebResponse;
-            StreamReader reader = new StreamReader(searchResponse.GetResponseStream());
-
-            ShortURL temp = FattyHelpers.DeserializeFromJsonString<ShortURL>(reader.ReadToEnd());
-
-            return temp.id;
         }
         #endregion
 
