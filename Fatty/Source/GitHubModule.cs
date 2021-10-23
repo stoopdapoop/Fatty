@@ -344,7 +344,7 @@ namespace Fatty
             for (int i = 0; i < commitCount; ++i)
             {
                 string commitURL = $"https://www.github.com/{evnt.Repo.RepoName}/commit/{evnt.Payload.Commits[i].Hash.Substring(0, 8)}";
-                messageAccumulator.Append($"{evnt.Payload.Commits[i].Message} - {commitURL}");
+                messageAccumulator.Append($"\"{evnt.Payload.Commits[i].Message}\" - {commitURL}");
                 if(i != commitCount - 1)
                 {
                     messageAccumulator.Append(" || ");
