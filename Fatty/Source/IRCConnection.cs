@@ -137,7 +137,8 @@ namespace Fatty
 
         private void SendServerMessage(string message)
         {
-            string outMessage = String.Format("{0}", message);
+            // remove newlines and carraige return
+            string outMessage = String.Format("{0}", message.Replace("\n", " ").Replace("\r", ""));
             lock (WriteLock)
             {
                 this.IrcWriter.WriteLine(outMessage);
