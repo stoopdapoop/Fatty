@@ -38,7 +38,7 @@ namespace Fatty
 
         void OnChannelMessage(string ircUser, string message)
         {
-            if (message.Contains(OwningChannel.GetFattyNick()))
+            if (message.Contains(OwningChannel.GetFattyNick(),StringComparison.CurrentCultureIgnoreCase))
             {
                 RandomGreeting(ircUser, message);
             }
