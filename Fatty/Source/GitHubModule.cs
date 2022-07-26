@@ -110,6 +110,9 @@ namespace Fatty
 
             [DataMember(Name = "release")]
             public GitHubRelease Release;
+
+            [DataMember(Name = "pages")]
+            public GitHubPages Pages;
         }
 
         [DataContract]
@@ -165,7 +168,23 @@ namespace Fatty
             public string URL;
         }
 
-            class FattyRequest : RestRequest
+        [DataContract]
+        public class GitHubPages
+        {
+            [DataMember(Name = "html_url")]
+            public string PageURL;
+
+            [DataMember(Name = "action")]
+            public string ActionName;
+
+            [DataMember(Name = "title")]
+            public string Title;
+
+            [DataMember(Name = "summary")]
+            public string Summary;
+        }
+
+        class FattyRequest : RestRequest
         {
             public FattyRequest(string resource) : base(resource) { }
             public object UserState { get; set; }
@@ -339,6 +358,8 @@ namespace Fatty
                     return $"{evnt.Actor.DisplayName} started watching {evnt.Repo.RepoName}!!";
                 case "ReleaseEvent":
                     return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} release in {evnt.Repo.RepoName}. \"{evnt.Payload.Release.Body}\" -- {evnt.Payload.Release.URL}";
+                case "GollumEvent":
+                    return $"{evnt.Actor.DisplayName} {evnt.Payload.Pages.ActionName} Wiki page: {evnt.Payload.Pages.PageURL} - {evnt.Payload.Pages.Summary}";
                 default:
                     return $"Unhandled Event \"{evnt.EventType}\" Triggered by {evnt.Actor.DisplayName}! Fix or ignore.";
             }
