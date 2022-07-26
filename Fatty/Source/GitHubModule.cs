@@ -204,12 +204,15 @@ namespace Fatty
                     FattyRequest owningRequest = (FattyRequest)r.Request;
                     GitHubContext owningContext = (GitHubContext)owningRequest.UserState;
 
-                    List<GitHubEvent> LatestEvents = FattyHelpers.DeserializeFromJsonString<List<GitHubEvent>>(r.Content, SerializerSettings);
-                    if (LatestEvents != null && LatestEvents.Count > 0)
+                    if (r.IsSuccessful)
                     {
-                        owningContext.LastSeen = LatestEvents[0].CreatedDateTime;
                         owningContext.IsValidEndpoint = true;
-                    }
+                        List<GitHubEvent> LatestEvents = FattyHelpers.DeserializeFromJsonString<List<GitHubEvent>>(r.Content, SerializerSettings);
+                        if (LatestEvents != null && LatestEvents.Count > 0)
+                        {
+                            owningContext.LastSeen = LatestEvents[0].CreatedDateTime;
+                        }
+                    }       
                 }
             };
 
