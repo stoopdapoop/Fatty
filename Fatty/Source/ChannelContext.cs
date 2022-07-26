@@ -102,7 +102,7 @@ namespace Fatty
                     ActiveModules.Add(module);
 
                     List<UserCommand> ModuleCommands = new List<UserCommand>();
-                    module.GetAvailableCommands(ref ModuleCommands);
+                    module.RegisterAvailableCommands(ref ModuleCommands);
 
                     foreach(UserCommand command in ModuleCommands)
                     {

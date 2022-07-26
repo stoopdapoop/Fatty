@@ -24,7 +24,7 @@ namespace Fatty
             EmailSettings = LoadEmailConfig();
         }
 
-        public override void GetAvailableCommands(ref List<UserCommand> Commands)
+        public override void RegisterAvailableCommands(ref List<UserCommand> Commands)
         {
             Commands.Add(new UserCommand("Email", EmailCommand, @"params are : [EmailAddress] [Message]"));
         }

@@ -74,7 +74,7 @@ namespace Fatty
             CommandNames.Add("gis");
         }
 
-        public override void GetAvailableCommands(ref List<UserCommand> Commands)
+        public override void RegisterAvailableCommands(ref List<UserCommand> Commands)
         {
             Commands.Add(new UserCommand("g", Google, "google search"));
             Commands.Add(new UserCommand("gis", GoogleImageSearch, "google image search"));

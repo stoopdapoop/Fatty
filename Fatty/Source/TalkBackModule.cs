@@ -19,7 +19,7 @@ namespace Fatty
         }
 
 
-        public override void GetAvailableCommands(ref List<UserCommand> Commands)
+        public override void RegisterAvailableCommands(ref List<UserCommand> Commands)
         {
             Commands.Add(new UserCommand("Noel", NoelCommand, "returns what noel would say in this situation"));
         }

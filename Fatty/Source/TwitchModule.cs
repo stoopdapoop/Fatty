@@ -6,7 +6,7 @@ namespace Fatty
 {
     public class TwitchModule : FattyModule
     {
-        public override void GetAvailableCommands(ref List<UserCommand> Commands)
+        public override void RegisterAvailableCommands(ref List<UserCommand> Commands)
         {
             
         }
