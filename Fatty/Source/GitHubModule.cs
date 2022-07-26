@@ -300,7 +300,7 @@ namespace Fatty
                 OwningChannel.SendChannelMessage(FormatEventString(unseen));
                 if (events.Count > 1)
                 {
-                    Thread.Sleep(2000);
+                    Thread.Sleep(500);
                 }
             }
         }
