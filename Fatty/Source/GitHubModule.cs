@@ -127,6 +127,9 @@ namespace Fatty
         {
             [DataMember(Name = "body")]
             public string Body;
+
+            [DataMember(Name = "html_url")]
+            public string PageURL;
         }
 
         [DataContract]
@@ -323,7 +326,7 @@ namespace Fatty
                 case "DeleteEvent":
                     return $"{evnt.Actor.DisplayName} Deleted {evnt.Payload.RefType} from {evnt.Repo.RepoName}";
                 case "CommitCommentEvent":
-                    return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} commit comment in {evnt.Repo.RepoName}";
+                    return $"{evnt.Actor.DisplayName} made comment on commit in {evnt.Repo.RepoName} - {evnt.Payload.Comment.PageURL}";
                 case "CreateEvent":
                     return $"{evnt.Actor.DisplayName} created {evnt.Payload.RefType} in {evnt.Repo.RepoName}";
                 case "ForkEvent":
