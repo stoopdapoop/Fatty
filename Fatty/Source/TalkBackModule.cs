@@ -22,11 +22,13 @@ namespace Fatty
         public override void RegisterAvailableCommands(ref List<UserCommand> Commands)
         {
             Commands.Add(new UserCommand("Noel", NoelCommand, "returns what noel would say in this situation"));
+            Commands.Add(new UserCommand("dpaste", DpasteCommand, "Gets a link to dpaste."));
         }
 
         public override void ListCommands(ref List<string> CommandNames)
         {
             CommandNames.Add("Noel");
+            CommandNames.Add("dpaste");
         }
 
         public override void RegisterEvents()
@@ -38,7 +40,7 @@ namespace Fatty
 
         void OnChannelMessage(string ircUser, string message)
         {
-            if (message.Contains(OwningChannel.GetFattyNick(),StringComparison.CurrentCultureIgnoreCase))
+            if (message.Contains(OwningChannel.GetFattyNick()))
             {
                 RandomGreeting(ircUser, message);
             }
@@ -64,6 +66,11 @@ namespace Fatty
         private void NoelCommand(string ircUser, string ircChannel, string message)
         {
             OwningChannel.SendMessage("NO!", ircUser);
+        }
+
+        private void DpasteCommand(string ircUser, string ircChannel, string message)
+        {
+            OwningChannel.SendMessage("https://dpaste.org/", ircUser);
         }
     }
 }
