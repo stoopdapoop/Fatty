@@ -112,7 +112,7 @@ namespace Fatty
             public GitHubRelease Release;
 
             [DataMember(Name = "pages")]
-            public GitHubPages Pages;
+            public List<GitHubPages> Pages;
         }
 
         [DataContract]
@@ -359,7 +359,12 @@ namespace Fatty
                 case "ReleaseEvent":
                     return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} release in {evnt.Repo.RepoName}. \"{evnt.Payload.Release.Body}\" -- {evnt.Payload.Release.URL}";
                 case "GollumEvent":
-                    return $"{evnt.Actor.DisplayName} {evnt.Payload.Pages.ActionName} Wiki page: {evnt.Payload.Pages.PageURL} - {evnt.Payload.Pages.Summary}";
+                    {
+                        if (evnt.Payload.Pages.Count > 0)
+                            return $"{evnt.Actor.DisplayName} {evnt.Payload.Pages[0].ActionName} Wiki page : {evnt.Payload.Pages[0].PageURL} - {evnt.Payload.Pages[0].Summary}";
+                        else
+                            return $"{evnt.Actor.DisplayName} made some change to the wiki, but there are no pages associated with the change";
+                    }
                 default:
                     return $"Unhandled Event \"{evnt.EventType}\" Triggered by {evnt.Actor.DisplayName}! Fix or ignore.";
             }
