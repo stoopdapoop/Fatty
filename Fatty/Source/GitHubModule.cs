@@ -40,6 +40,15 @@ namespace Fatty
 
             [IgnoreDataMember]
             public bool IsValidEndpoint;
+
+            [IgnoreDataMember]
+            public Dictionary<string, string> LatestWikiHash;
+
+            [OnDeserialized]
+            private void DeserializationInitializer(StreamingContext ctx)
+            {
+                LatestWikiHash = new Dictionary<string, string>();
+            }
         }
 
         [DataContract]
@@ -112,7 +121,7 @@ namespace Fatty
             public GitHubRelease Release;
 
             [DataMember(Name = "pages")]
-            public List<GitHubPages> Pages;
+            public List<GitHubPage> Pages;
         }
 
         [DataContract]
@@ -169,7 +178,7 @@ namespace Fatty
         }
 
         [DataContract]
-        public class GitHubPages
+        public class GitHubPage
         {
             [DataMember(Name = "html_url")]
             public string PageURL;
@@ -180,12 +189,15 @@ namespace Fatty
             [DataMember(Name = "page_name")]
             public string PageName;
             
-
             [DataMember(Name = "title")]
             public string Title;
 
             [DataMember(Name = "summary")]
             public string Summary;
+
+            [DataMember(Name = "sha")]
+            public string PageHash;
+            
         }
 
         class FattyRequest : RestRequest
@@ -224,7 +236,7 @@ namespace Fatty
         {
             base.ChannelInit(channel);
 
-            Action<IRestResponse> responseCallback = r => {
+            Action<IRestResponse> FirstResponseCallback = r => {
                 if (r.Request is FattyRequest)
                 {
                     FattyRequest owningRequest = (FattyRequest)r.Request;
@@ -237,8 +249,19 @@ namespace Fatty
                         if (LatestEvents != null && LatestEvents.Count > 0)
                         {
                             owningContext.LastSeen = LatestEvents[0].CreatedDateTime;
+
+                            foreach(GitHubEvent evnt in LatestEvents)
+                            {
+                                if(evnt.EventType == "GollumEvent")
+                                {
+                                    foreach (GitHubPage page in evnt.Payload.Pages)
+                                    {
+                                        owningContext.LatestWikiHash.TryAdd(page.PageURL, page.PageHash);
+                                    }
+                                }
+                            }
                         }
-                    }       
+                    }
                 }
             };
 
@@ -263,7 +286,7 @@ namespace Fatty
                 FattyRequest request = new FattyRequest("events");
                 request.UserState = ghContext;
 
-                client.ExecuteAsync(request, responseCallback);
+                client.ExecuteAsync(request, FirstResponseCallback);
             }
 
             PollTimer = new System.Timers.Timer(TimeSpan.FromSeconds(30.0).TotalMilliseconds);
@@ -275,7 +298,7 @@ namespace Fatty
 
         void PollTimerElapsed(object sender, ElapsedEventArgs e)
         {
-            Action<IRestResponse> responseCallback = r => {
+            Action<IRestResponse> PollEventsCallback = r => {
                 if (r.Request is FattyRequest)
                 {
                     FattyRequest owningRequest = (FattyRequest)r.Request;
@@ -300,7 +323,7 @@ namespace Fatty
                         }
 
                         UnseenEvents.Reverse();
-                        EmitEventMessages(UnseenEvents);
+                        EmitEventMessages(UnseenEvents, owningContext);
                     }
                 }
             };
@@ -317,16 +340,16 @@ namespace Fatty
                     FattyRequest request = new FattyRequest("events");
                     request.UserState = ghContext;
 
-                    client.ExecuteAsync(request, responseCallback);
+                    client.ExecuteAsync(request, PollEventsCallback);
                 }
             }
         }
 
-        void EmitEventMessages(List<GitHubEvent> events)
+        void EmitEventMessages(List<GitHubEvent> events, GitHubContext context)
         {
             foreach (GitHubEvent unseen in events)
             {
-                OwningChannel.SendChannelMessage(FormatEventString(unseen));
+                OwningChannel.SendChannelMessage(FormatEventString(unseen, context));
                 if (events.Count > 1)
                 {
                     Thread.Sleep(500);
@@ -334,21 +357,16 @@ namespace Fatty
             }
         }
 
-        string FormatEventString(GitHubEvent evnt)
+        string FormatEventString(GitHubEvent evnt, GitHubContext context)
         {
             switch(evnt.EventType)
             {
                 case "PushEvent":
-                    return GetPushEventString(evnt);
+                    return FormatPushEventString(evnt);
                 case "IssuesEvent":
                     return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} issue \"{evnt.Payload.Issue.IssueTitle}\" - {evnt.Payload.Issue.PageURL}";
                 case "IssueCommentEvent":
-                    {
-                        string bodySnippet = evnt.Payload.Comment.Body.Substring(0, Math.Min(evnt.Payload.Comment.Body.Length, 16));
-                        if (evnt.Payload.Comment.Body.Length > 16)
-                            bodySnippet += "(...)";
-                        return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} comment \"{evnt.Payload.Issue.IssueTitle}\" - {evnt.Payload.Issue.PageURL} // {bodySnippet}...";
-                    }
+                    return FormatIssueCommentEventString(evnt);
                 case "PullRequestEvent":
                     return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} pull request for {evnt.Repo.RepoName}";
                 case "DeleteEvent":
@@ -368,18 +386,14 @@ namespace Fatty
                 case "ReleaseEvent":
                     return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} release in {evnt.Repo.RepoName}. \"{evnt.Payload.Release.Body}\" -- {evnt.Payload.Release.URL}";
                 case "GollumEvent":
-                    {
-                        if (evnt.Payload.Pages.Count > 0)
-                            return $"{evnt.Actor.DisplayName} {evnt.Payload.Pages[0].ActionName} \"{evnt.Payload.Pages[0].Title}\" Wiki page : {evnt.Payload.Pages[0].PageURL} - {evnt.Payload.Pages[0].Summary}";
-                        else
-                            return $"{evnt.Actor.DisplayName} made some change to the wiki, but there are no pages associated with the change";
-                    }
+                    return FormatGollumEventString(evnt, context);
+
                 default:
                     return $"Unhandled Event \"{evnt.EventType}\" Triggered by {evnt.Actor.DisplayName}! Fix or ignore.";
             }
         }
 
-        string GetPushEventString(GitHubEvent evnt)
+        string FormatPushEventString(GitHubEvent evnt)
         {
             int commitCount = evnt.Payload.PayloadSize;
             StringBuilder messageAccumulator = new StringBuilder();
@@ -396,6 +410,36 @@ namespace Fatty
             }
 
             return messageAccumulator.ToString();
+        }
+
+        string FormatIssueCommentEventString(GitHubEvent evnt)
+        {
+            string bodySnippet = evnt.Payload.Comment.Body.Substring(0, Math.Min(evnt.Payload.Comment.Body.Length, 16));
+            if (evnt.Payload.Comment.Body.Length > 16)
+                bodySnippet += "(...)";
+            return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} comment \"{evnt.Payload.Issue.IssueTitle}\" - {evnt.Payload.Issue.PageURL} // {bodySnippet}...";
+        }
+
+        string FormatGollumEventString(GitHubEvent evnt, GitHubContext context)
+        {
+            
+            if (evnt.Payload.Pages.Count > 0)
+            {
+                GitHubPage page = evnt.Payload.Pages[0];
+                string oldHash;
+                if (context.LatestWikiHash.TryGetValue(page.PageURL, out oldHash))
+                {
+                    string compareURL = $"{page.PageURL}/_compare/{oldHash}...{page.PageHash}";
+                    return $"{evnt.Actor.DisplayName} {page.ActionName} \"{page.Title}\" Wiki page : {compareURL}";
+                }
+
+                // just return the regular url if we haven't seen the old hash and can't make a comparison url
+                return $"{evnt.Actor.DisplayName} {evnt.Payload.Pages[0].ActionName} \"{evnt.Payload.Pages[0].Title}\" Wiki page : {page.PageURL}";
+            }
+            else
+            {
+                return $"{evnt.Actor.DisplayName} made some change to the wiki, but there are no pages associated with the change. This should never happen";
+            }
         }
     }
 }
