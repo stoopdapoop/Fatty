@@ -177,6 +177,10 @@ namespace Fatty
             [DataMember(Name = "action")]
             public string ActionName;
 
+            [DataMember(Name = "page_name")]
+            public string PageName;
+            
+
             [DataMember(Name = "title")]
             public string Title;
 
@@ -366,7 +370,7 @@ namespace Fatty
                 case "GollumEvent":
                     {
                         if (evnt.Payload.Pages.Count > 0)
-                            return $"{evnt.Actor.DisplayName} {evnt.Payload.Pages[0].ActionName} Wiki page : {evnt.Payload.Pages[0].PageURL} - {evnt.Payload.Pages[0].Summary}";
+                            return $"{evnt.Actor.DisplayName} {evnt.Payload.Pages[0].ActionName} \"{evnt.Payload.Pages[0].Title}\" Wiki page : {evnt.Payload.Pages[0].PageURL} - {evnt.Payload.Pages[0].Summary}";
                         else
                             return $"{evnt.Actor.DisplayName} made some change to the wiki, but there are no pages associated with the change";
                     }
