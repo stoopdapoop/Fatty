@@ -339,7 +339,12 @@ namespace Fatty
                 case "IssuesEvent":
                     return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} issue \"{evnt.Payload.Issue.IssueTitle}\" - {evnt.Payload.Issue.PageURL}";
                 case "IssueCommentEvent":
-                    return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} comment \"{evnt.Payload.Issue.IssueTitle}\" - {evnt.Payload.Issue.PageURL} // {evnt.Payload.Comment.Body}";
+                    {
+                        string bodySnippet = evnt.Payload.Comment.Body.Substring(0, Math.Min(evnt.Payload.Comment.Body.Length, 16));
+                        if (evnt.Payload.Comment.Body.Length > 16)
+                            bodySnippet += "(...)";
+                        return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} comment \"{evnt.Payload.Issue.IssueTitle}\" - {evnt.Payload.Issue.PageURL} // {bodySnippet}...";
+                    }
                 case "PullRequestEvent":
                     return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} pull request for {evnt.Repo.RepoName}";
                 case "DeleteEvent":
