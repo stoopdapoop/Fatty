@@ -82,7 +82,7 @@ namespace Fatty
             }
             catch (Exception e)
             {
-                Fatty.PrintToScreen("Invalid Connections Config: " + e.Message);
+                Fatty.PrintWarningToScreen($"Invalid Connections Config: {e.Message}", e.StackTrace);
                 return null;
             }
         }
@@ -90,6 +90,18 @@ namespace Fatty
         public static void PrintToScreen(string format, params object[] args)
         {
             PrintToScreen(String.Format(format, args));
+        }
+
+
+        public static void PrintWarningToScreen(string message, string optionalStack = "")
+        {
+            Fatty.PrintToScreen("-----------------------------------------------------------------------------\r\n");
+            PrintToScreen(message, ConsoleColor.Yellow);
+            if (optionalStack.Length > 0)
+            {
+                PrintToScreen(optionalStack, ConsoleColor.Yellow);
+            }
+            Fatty.PrintToScreen("-----------------------------------------------------------------------------\r\n");
         }
 
         public static void PrintToScreen(string message)

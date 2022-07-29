@@ -103,11 +103,11 @@ namespace Fatty
             }
             catch (Exception e)
             {
-                Fatty.PrintToScreen("Connection Failed: {0}", e.Message);
+                Fatty.PrintWarningToScreen($"Connection Failed: {e.Message}", e.StackTrace);
                 if(ListenerThread.IsAlive)
                 {
                     ListenerThread.Abort();
-                    Fatty.PrintToScreen("Aborted ListenerThread");
+                    Fatty.PrintToScreen("Aborted ListenerThread", ConsoleColor.Yellow);
                 }
             }
         }
@@ -173,23 +173,21 @@ namespace Fatty
         {
             string ircResponse;
             ListenerIsListening = true;
-            while ((ircResponse = this.IrcReader.ReadLine()) != null)
+
+            try
             {
-                try
+                while ((ircResponse = this.IrcReader.ReadLine()) != null)
                 {
-                    PrintServerMessage(ircResponse);
-                    ThreadPool.QueueUserWorkItem(ThreadProc, ircResponse);
-                }
-                catch(Exception e)
-                {
-                    Fatty.PrintToScreen("-----------------------------------------------------------------------------\r\n");
-                    Fatty.PrintToScreen(e.Message);
-                    Fatty.PrintToScreen(e.StackTrace);
-                    Fatty.PrintToScreen("-----------------------------------------------------------------------------");
+                        PrintServerMessage(ircResponse);
+                        ThreadPool.QueueUserWorkItem(ThreadProc, ircResponse);
                 }
             }
+            catch (Exception e)
+            {
+                Fatty.PrintWarningToScreen($"Listener Exception: {e.Message}", e.StackTrace);
+            }
 
-            Fatty.PrintToScreen("Listener Died");
+            Fatty.PrintToScreen("Listener Died", ConsoleColor.Yellow);
             ListenerIsListening = false;
         }
 
@@ -410,7 +408,9 @@ namespace Fatty
                 string userSender = tokens[0].Substring(0, tokens[0].IndexOf('!'));
                 SendMessage(userSender, "something broke");
                 Thread.Sleep(500);
-                SendMessage(userSender, ex.Message);
+                SendMessage(userSender, ex.Message.Substring(0, 400));
+
+                Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
             }
 
             if (NoticeEvent != null && !bAdminCommand)

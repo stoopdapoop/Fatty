@@ -78,7 +78,8 @@ namespace Fatty
                     }
                     catch (Exception e)
                     {
-                        Fatty.PrintToScreen("Error: " + e.Message);
+                        Fatty.PrintWarningToScreen($"Error sending mail from address {EmailSettings.EmailAddress} - {e.Message}", e.StackTrace);
+                        Fatty.PrintToScreen(e.StackTrace, ConsoleColor.Yellow);
                         return false;
                     }
 
@@ -98,8 +99,8 @@ namespace Fatty
             }
             catch (Exception e)
             {
-                Fatty.PrintToScreen(e.Message);
-                return null;
+                Fatty.PrintWarningToScreen($"Error loading mail config: {e.Message}", e.StackTrace);
+                return default(EmailConfig);
             }
         }
     }

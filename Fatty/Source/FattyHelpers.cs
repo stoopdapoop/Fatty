@@ -31,7 +31,7 @@ namespace Fatty
             }
             catch (Exception e)
             {
-                Fatty.PrintToScreen("Invalid Connections Config: " + e.Message, ConsoleColor.Yellow);
+                Fatty.PrintWarningToScreen($"Failed to deserialize \"{typeof(T).FullName}\" from path: {path} - {e.Message}", e.StackTrace);
                 return default(T);
             }    
         }
@@ -57,7 +57,9 @@ namespace Fatty
             }
             catch (Exception e)
             {
-                Fatty.PrintToScreen(e.Message, ConsoleColor.Yellow);
+                Fatty.PrintToScreen($"Failed to deserialize object of type \"{typeof(T).FullName}\" from string - Exception: {e.Message}", ConsoleColor.Yellow);
+                Fatty.PrintToScreen(json, ConsoleColor.Red);
+                Fatty.PrintToScreen(e.StackTrace, ConsoleColor.Yellow);
                 return default(T);
             }
         }
@@ -85,7 +87,7 @@ namespace Fatty
             }
             catch (Exception e)
             {
-                Fatty.PrintToScreen(e.Message, ConsoleColor.Yellow);
+                Fatty.PrintWarningToScreen($"Failed to serialize object of type :{typeof(T).FullName} - Exception: {e.Message}", e.StackTrace);
                 return default(string);
             }
         }
