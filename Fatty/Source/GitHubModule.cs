@@ -414,10 +414,11 @@ namespace Fatty
 
         string FormatIssueCommentEventString(GitHubEvent evnt)
         {
-            string bodySnippet = evnt.Payload.Comment.Body.Substring(0, Math.Min(evnt.Payload.Comment.Body.Length, 16));
-            if (evnt.Payload.Comment.Body.Length > 16)
-                bodySnippet += "(...)";
-            return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} comment \"{evnt.Payload.Issue.IssueTitle}\" - {evnt.Payload.Issue.PageURL} // {bodySnippet}...";
+            const int previewLength = 26;
+            string bodySnippet = evnt.Payload.Comment.Body.Substring(0, Math.Min(evnt.Payload.Comment.Body.Length, previewLength));
+            if (evnt.Payload.Comment.Body.Length > previewLength)
+                bodySnippet += "...";
+            return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} comment \"{evnt.Payload.Issue.IssueTitle}\" - {evnt.Payload.Issue.PageURL} // {bodySnippet}";
         }
 
         string FormatGollumEventString(GitHubEvent evnt, GitHubContext context)
