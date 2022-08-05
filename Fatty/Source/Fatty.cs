@@ -109,19 +109,19 @@ namespace Fatty
 
         public static void PrintToScreen(string message)
         {
+            string output = new string(message.Where(c => !char.IsControl(c)).ToArray());
             lock (PrintLock)
-            {
-                string output = new string(message.Where(c => !char.IsControl(c)).ToArray());
+            {      
                 Console.WriteLine(output.TrimEnd());
             }
         }
 
         public static void PrintToScreen(string message, ConsoleColor color)
         {
+            string output = new string(message.Where(c => !char.IsControl(c)).ToArray());
             lock (PrintLock)
             {
-                Console.ForegroundColor = color;
-                string output = new string(message.Where(c => !char.IsControl(c)).ToArray());
+                Console.ForegroundColor = color; 
                 Console.WriteLine(output.TrimEnd());
                 Console.ResetColor();
             }
