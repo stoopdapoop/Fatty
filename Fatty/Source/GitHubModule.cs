@@ -13,6 +13,8 @@ namespace Fatty
     public class GitHubModule : FattyModule
     {
 
+        #region DataContracts
+
         [DataContract]
         public class GitHubContextListing
         {
@@ -200,6 +202,8 @@ namespace Fatty
             
         }
 
+        #endregion
+
         class FattyRequest : RestRequest
         {
             public FattyRequest(string resource) : base(resource) { }
@@ -349,11 +353,42 @@ namespace Fatty
         {
             foreach (GitHubEvent unseen in events)
             {
-                OwningChannel.SendChannelMessage(FormatEventString(unseen, context));
-                if (events.Count > 1)
+                if (ShouldReportEvent(unseen, context))
                 {
-                    Thread.Sleep(500);
+                    OwningChannel.SendChannelMessage(FormatEventString(unseen, context));
+                    if (events.Count > 1)
+                    {
+                        Thread.Sleep(500);
+                    }
                 }
+
+                PostReportEvent(unseen, context);
+            }
+        }
+
+        bool ShouldReportEvent(GitHubEvent evnt, GitHubContext context)
+        {
+            
+            return true;
+        }
+
+        // function for handling events after they've been reported
+        void PostReportEvent(GitHubEvent evnt, GitHubContext context)
+        {
+            switch (evnt.EventType)
+            {
+                case "GollumEvent":
+                    PostReportGollumEvent(evnt, context);
+                    break;
+            }
+
+        }
+
+        void PostReportGollumEvent(GitHubEvent evnt, GitHubContext context)
+        {
+            foreach (var page in evnt.Payload.Pages)
+            {
+                context.LatestWikiHash[page.PageURL] = page.PageHash;
             }
         }
 
@@ -389,6 +424,7 @@ namespace Fatty
                     return FormatGollumEventString(evnt, context);
 
                 default:
+                    // see "ShouldReportEvent"
                     return $"Unhandled Event \"{evnt.EventType}\" Triggered by {evnt.Actor.DisplayName}! Fix or ignore.";
             }
         }
@@ -423,24 +459,28 @@ namespace Fatty
 
         string FormatGollumEventString(GitHubEvent evnt, GitHubContext context)
         {
-            
+            string ReturnString;
             if (evnt.Payload.Pages.Count > 0)
             {
-                GitHubPage page = evnt.Payload.Pages[0];
+                GitHubPage firstPage = evnt.Payload.Pages[0];
                 string oldHash;
-                if (context.LatestWikiHash.TryGetValue(page.PageURL, out oldHash))
+                if (context.LatestWikiHash.TryGetValue(firstPage.PageURL, out oldHash))
                 {
-                    string compareURL = $"{page.PageURL}/_compare/{oldHash}...{page.PageHash}";
-                    return $"{evnt.Actor.DisplayName} {page.ActionName} \"{page.Title}\" Wiki page : {compareURL}";
+                    string compareURL = $"{firstPage.PageURL}/_compare/{oldHash}...{firstPage.PageHash}";
+                    ReturnString = $"{evnt.Actor.DisplayName} {firstPage.ActionName} \"{firstPage.Title}\" Wiki page : {compareURL}";
                 }
-
-                // just return the regular url if we haven't seen the old hash and can't make a comparison url
-                return $"{evnt.Actor.DisplayName} {evnt.Payload.Pages[0].ActionName} \"{evnt.Payload.Pages[0].Title}\" Wiki page : {page.PageURL}";
+                else
+                {
+                    // just return the regular url if we haven't seen the old hash and can't make a comparison url
+                    ReturnString = $"{evnt.Actor.DisplayName} {evnt.Payload.Pages[0].ActionName} \"{evnt.Payload.Pages[0].Title}\" Wiki page : {firstPage.PageURL}";
+                }
             }
             else
             {
-                return $"{evnt.Actor.DisplayName} made some change to the wiki, but there are no pages associated with the change. This should never happen";
+                ReturnString = $"{evnt.Actor.DisplayName} made some change to the wiki, but there are no pages associated with the change. This should never happen";
             }
+
+            return ReturnString;
         }
     }
 }
