@@ -109,7 +109,7 @@ namespace Fatty
 
         public static void PrintToScreen(string message)
         {
-            string output = new string(message.Where(c => !char.IsControl(c)).ToArray());
+            string output = $"[{DateTime.Now}] {new string(message.Where(c => !char.IsControl(c)).ToArray())}";
             lock (PrintLock)
             {      
                 Console.WriteLine(output.TrimEnd());
@@ -118,7 +118,7 @@ namespace Fatty
 
         public static void PrintToScreen(string message, ConsoleColor color)
         {
-            string output = new string(message.Where(c => !char.IsControl(c)).ToArray());
+            string output = $"[{DateTime.Now}] {new string(message.Where(c => !char.IsControl(c)).ToArray())}";
             lock (PrintLock)
             {
                 Console.ForegroundColor = color; 
