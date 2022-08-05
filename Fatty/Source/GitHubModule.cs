@@ -328,6 +328,8 @@ namespace Fatty
 
                         UnseenEvents.Reverse();
                         EmitEventMessages(UnseenEvents, owningContext);
+
+                        UnseenEvents.ForEach(e => PostReportEvent(e, owningContext));  
                     }
                 }
             };
@@ -361,8 +363,6 @@ namespace Fatty
                         Thread.Sleep(500);
                     }
                 }
-
-                PostReportEvent(unseen, context);
             }
         }
 
@@ -381,7 +381,6 @@ namespace Fatty
                     PostReportGollumEvent(evnt, context);
                     break;
             }
-
         }
 
         void PostReportGollumEvent(GitHubEvent evnt, GitHubContext context)
