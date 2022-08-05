@@ -95,13 +95,16 @@ namespace Fatty
 
         public static void PrintWarningToScreen(string message, string optionalStack = "")
         {
-            Fatty.PrintToScreen("-----------------------------------------------------------------------------\r\n");
-            PrintToScreen(message, ConsoleColor.Yellow);
-            if (optionalStack.Length > 0)
+            lock (PrintLock)
             {
-                PrintToScreen(optionalStack, ConsoleColor.Yellow);
+                Fatty.PrintToScreen("-----------------------------------------------------------------------------\r\n");
+                PrintToScreen(message, ConsoleColor.Yellow);
+                if (optionalStack.Length > 0)
+                {
+                    PrintToScreen(optionalStack, ConsoleColor.Yellow);
+                }
+                Fatty.PrintToScreen("-----------------------------------------------------------------------------\r\n");
             }
-            Fatty.PrintToScreen("-----------------------------------------------------------------------------\r\n");
         }
 
         public static void PrintToScreen(string message)
