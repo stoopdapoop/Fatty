@@ -246,7 +246,7 @@ namespace Fatty
                     FattyRequest owningRequest = (FattyRequest)r.Request;
                     GitHubContext owningContext = (GitHubContext)owningRequest.UserState;
 
-                    if (r.IsSuccessful)
+                    if (r.IsSuccessful && owningContext != null)
                     {
                         owningContext.IsValidEndpoint = true;
                         List<GitHubEvent> LatestEvents = FattyHelpers.DeserializeFromJsonString<List<GitHubEvent>>(r.Content, SerializerSettings);
@@ -264,6 +264,16 @@ namespace Fatty
                                     }
                                 }
                             }
+                        }
+                    }
+                    else
+                    {
+                        Fatty.PrintWarningToScreen($"GitHub first contact error: {r.StatusCode}: {r.StatusDescription} - {r.ErrorMessage}", Environment.StackTrace);
+
+                        if (owningContext != null)
+                        {
+                            owningContext.IsValidEndpoint = false;
+                            Fatty.PrintWarningToScreen($"{owningContext.ProjectEndpoint} in {owningContext.ChannelName} on {owningContext.ServerName}");
                         }
                     }
                 }
@@ -308,28 +318,40 @@ namespace Fatty
                     FattyRequest owningRequest = (FattyRequest)r.Request;
                     GitHubContext owningContext = (GitHubContext)owningRequest.UserState;
 
-                    List<GitHubEvent> LatestEvents = FattyHelpers.DeserializeFromJsonString<List<GitHubEvent>>(r.Content, SerializerSettings);
-                    List<GitHubEvent> UnseenEvents = new List<GitHubEvent>();
-                    if (LatestEvents != null && LatestEvents.Count > 0)
+                    
+                    if (r.IsSuccessful && owningContext != null)
                     {
-                        foreach(GitHubEvent latestEvent in LatestEvents)
+                        List<GitHubEvent> LatestEvents = FattyHelpers.DeserializeFromJsonString<List<GitHubEvent>>(r.Content, SerializerSettings);
+                        List<GitHubEvent> UnseenEvents = new List<GitHubEvent>();
+                        if (LatestEvents != null && LatestEvents.Count > 0)
                         {
-                            if (latestEvent.CreatedDateTime <= owningContext.LastSeen)
+                            foreach (GitHubEvent latestEvent in LatestEvents)
                             {
-                                break;
-                            }
-                            if(owningContext.LastSeen < latestEvent.CreatedDateTime)
-                            {
-                                owningContext.LastSeen = latestEvent.CreatedDateTime;
+                                if (latestEvent.CreatedDateTime <= owningContext.LastSeen)
+                                {
+                                    break;
+                                }
+                                if (owningContext.LastSeen < latestEvent.CreatedDateTime)
+                                {
+                                    owningContext.LastSeen = latestEvent.CreatedDateTime;
+                                }
+
+                                UnseenEvents.Add(latestEvent);
                             }
 
-                            UnseenEvents.Add(latestEvent);
+                            UnseenEvents.Reverse();
+                            EmitEventMessages(UnseenEvents, owningContext);
+
+                            UnseenEvents.ForEach(e => PostReportEvent(e, owningContext));
                         }
-
-                        UnseenEvents.Reverse();
-                        EmitEventMessages(UnseenEvents, owningContext);
-
-                        UnseenEvents.ForEach(e => PostReportEvent(e, owningContext));  
+                    }
+                    else
+                    {
+                        Fatty.PrintWarningToScreen($"GitHub event poll request error: {r.StatusCode}: {r.StatusDescription} - {r.ErrorMessage}", Environment.StackTrace);
+                        if (owningContext != null)
+                        {
+                            Fatty.PrintWarningToScreen($"{owningContext.ProjectEndpoint} in {owningContext.ChannelName} on {owningContext.ServerName}");
+                        }
                     }
                 }
             };
