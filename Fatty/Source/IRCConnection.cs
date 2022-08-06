@@ -104,10 +104,9 @@ namespace Fatty
             catch (Exception e)
             {
                 Fatty.PrintWarningToScreen($"Connection Failed: {e.Message}", e.StackTrace);
-                if(ListenerThread.IsAlive)
+                if(ListenerThread != null && ListenerThread.IsAlive)
                 {
-                    ListenerThread.Abort();
-                    Fatty.PrintToScreen("Aborted ListenerThread", ConsoleColor.Yellow);
+                    Fatty.PrintWarningToScreen("Listener thread still running after connection failure!!!!");
                 }
             }
         }
@@ -173,10 +172,11 @@ namespace Fatty
         {
             string ircResponse;
             ListenerIsListening = true;
+            StreamReader reader = this.IrcReader;
 
             try
             {
-                while ((ircResponse = this.IrcReader.ReadLine()) != null)
+                while ((ircResponse = reader.ReadLine()) != null)
                 {
                         PrintServerMessage(ircResponse);
                         ThreadPool.QueueUserWorkItem(ThreadProc, ircResponse);

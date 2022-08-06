@@ -4,6 +4,8 @@ using System.Net;
 using System.IO;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
+using System.Net.Http;
+using System.Web;
 
 namespace Fatty
 {
@@ -97,14 +99,14 @@ namespace Fatty
 
         public void Google(string ircUser, string ircChannel, string message)
         {
-            string argument = FattyHelpers.RemoveCommandName(message);
+            string argument = HttpUtility.UrlEncode(FattyHelpers.RemoveCommandName(message));
             string searchURL = $"https://www.googleapis.com/customsearch/v1?key={Config.GoogleAPIKey}&cx={Config.GoogleCustomSearchID}&q={argument}";
             GoogleAPIPrinter(searchURL);
         }
 
         public void GoogleImageSearch(string ircUser, string ircChannel, string message)
         {
-            string argument = FattyHelpers.RemoveCommandName(message);
+            string argument = HttpUtility.UrlEncode(FattyHelpers.RemoveCommandName(message));
             string searchURL = $"https://www.googleapis.com/customsearch/v1?key={Config.GoogleAPIKey}&cx={Config.GoogleCustomSearchID}&searchType=image&q={argument}";
             GoogleAPIPrinter(searchURL);
         }
@@ -113,9 +115,11 @@ namespace Fatty
         #region utils
         private void GoogleAPIPrinter(string searchURL)
         {
-            HttpWebRequest searchRequest = HttpWebRequest.Create(searchURL) as HttpWebRequest;
-            HttpWebResponse searchResponse = searchRequest.GetResponse() as HttpWebResponse;
-            StreamReader reader = new StreamReader(searchResponse.GetResponseStream());
+            HttpClient httpClient = new HttpClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(20);
+            var response = httpClient.Send(new HttpRequestMessage(HttpMethod.Get, searchURL));
+
+            StreamReader reader = new StreamReader(response.Content.ReadAsStream());
             String data = reader.ReadToEnd();
 
             GoogleSearchResults results = FattyHelpers.DeserializeFromJsonString<GoogleSearchResults>(data);

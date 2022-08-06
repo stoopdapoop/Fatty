@@ -6,6 +6,7 @@ using System.Net;
 using System.IO;
 using System.Web;
 using System.Runtime.Serialization;
+using System.Net.Http;
 
 namespace Fatty
 {
@@ -96,14 +97,14 @@ namespace Fatty
             message = FattyHelpers.RemoveCommandName(message);
             string args = HttpUtility.UrlEncode(message);
             string searchURL = $"http://api.wolframalpha.com/v2/query?input={args}&appid={Config.WolframAlphaKey}";
-            HttpWebRequest searchRequest = HttpWebRequest.Create(searchURL) as HttpWebRequest;
-            HttpWebResponse searchResponse = searchRequest.GetResponse() as HttpWebResponse;
-            StreamReader reader = new StreamReader(searchResponse.GetResponseStream());
+
+            HttpClient httpClient = new HttpClient();
+            HttpResponseMessage response = httpClient.Send(new HttpRequestMessage(HttpMethod.Get, searchURL));
+
+            StreamReader reader = new StreamReader(response.Content.ReadAsStream());
 
             XmlDocument xmlDoc = new XmlDocument();
             xmlDoc.Load(reader);
-
-
 
             StringBuilder messageAccumulator = new StringBuilder();
             //int messageOverhead = FattyBot.GetMessageOverhead(info.Source);
