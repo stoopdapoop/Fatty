@@ -59,9 +59,9 @@ namespace Fatty
             try
             {
                 //Establish connection
-                // todo: beginconnect for async
                 this.IrcConnection = new TcpClient(Context.ServerURL, Context.ServerPort);
-                //this.IrcConnection.ReceiveTimeout = 1000 * 60 * 5;
+                // wait 20 minutes for timeout
+                this.IrcConnection.ReceiveTimeout = 1000 * 60 * 20;
                 this.IrcStream = this.IrcConnection.GetStream();
                 if (Context.UseSSL)
                 {
