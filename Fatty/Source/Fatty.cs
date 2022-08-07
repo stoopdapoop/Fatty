@@ -37,6 +37,7 @@ namespace Fatty
             ModuleTypes.Add(typeof(GitHubModule));
             ModuleTypes.Add(typeof(WolframModule));
             ModuleTypes.Add(typeof(GoogleModule));
+            ModuleTypes.Add(typeof(CraigslistModule));
 
             // Todo: loop through server contexts and connect to each
             List<ServerContext> ServerContexts = LoadServerConfigs();

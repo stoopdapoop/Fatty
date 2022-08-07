@@ -8,7 +8,7 @@ namespace Fatty
     {
         protected ChannelContext OwningChannel;
 
-        // called upon joining a channel, useful for setting up callbacks
+        // called before joining a channel or server, useful for setting up callbacks. called serially from main thread
         public virtual void ChannelInit(ChannelContext channel)
         {
             OwningChannel = channel;

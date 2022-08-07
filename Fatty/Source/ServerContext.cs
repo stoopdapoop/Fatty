@@ -91,7 +91,7 @@ namespace Fatty
             lock (LoggingLock)
             {
                 ChannelLog JoiningLog;
-                var ChannelQuery = Logging.Channels.Where( x => x.ChannelName == ircChannel && x.Server == ServerLogInstance);
+                var ChannelQuery = Logging.Channels.AsQueryable().Where( x => x.ChannelName == ircChannel && x.Server == ServerLogInstance);
                 if (ChannelQuery.Count() == 0)
                 {
                     JoiningLog = new ChannelLog();
@@ -212,7 +212,7 @@ namespace Fatty
                 }
 
 
-                var ServerQuery = Logging.Servers.Where(x => x.ServerName == ServerName);
+                IEnumerable<ServerLog> ServerQuery = Logging.Servers.AsQueryable().Where(x => x.ServerName == ServerName);
                 if (ServerQuery.Count() == 0)
                 {
                     ServerLog thisServer = new ServerLog(ServerName);
