@@ -12,7 +12,7 @@ namespace Fatty
     class GoogleModule : FattyModule
     {
 
-        GoogleConfig Config;
+        private static GoogleConfig Config;
 
 
         #region GoogleStructs
