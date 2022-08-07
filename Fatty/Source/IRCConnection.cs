@@ -203,7 +203,12 @@ namespace Fatty
             {
                 string talkingUser = messageTokens[0].Substring(0, messageTokens[0].IndexOf('!')).TrimStart(':');
                 string userMessage = String.Join(' ', messageTokens, 3, messageTokens.Length - 3);
-                userMessage = userMessage.Substring(1, userMessage.Length - 1);
+                // unsure if this check is needed but as far as I can tell all messages start with this colon, but it's not explicity specified in the RFC
+                if (userMessage[0] == ':')
+                {
+                    userMessage = userMessage.Substring(1, userMessage.Length - 1);
+                }
+
                 Fatty.PrintToScreen(String.Format("{0}<{1}>{2}", messageTokens[2], talkingUser, userMessage), ConsoleColor.DarkCyan);
             }
             else if (messageTokens[1].Length == 3 && Char.IsDigit(messageTokens[1][0]))
