@@ -202,7 +202,8 @@ namespace Fatty
             if (messageTokens[1] == "PRIVMSG")
             {
                 string talkingUser = messageTokens[0].Substring(0, messageTokens[0].IndexOf('!')).TrimStart(':');
-                string userMessage = String.Join(' ', messageTokens, 3, messageTokens.Length - 3).TrimStart(':');
+                string userMessage = String.Join(' ', messageTokens, 3, messageTokens.Length - 3);
+                userMessage = userMessage.Substring(1, userMessage.Length - 1);
                 Fatty.PrintToScreen(String.Format("{0}<{1}>{2}", messageTokens[2], talkingUser, userMessage), ConsoleColor.DarkCyan);
             }
             else if (messageTokens[1].Length == 3 && Char.IsDigit(messageTokens[1][0]))
