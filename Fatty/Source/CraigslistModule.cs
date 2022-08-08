@@ -29,14 +29,46 @@ namespace Fatty
             [DataMember(IsRequired = true)]
             public string ChannelName;
 
-            [DataMember]
-            public string SearchString;
+            [DataMember(IsRequired = true)]
+            public List<CraigslistWatch> WatchList;
         }
 
-        static private Object StaticLock = new object();
+        [DataContract]
+        public class CraigslistWatch
+        {
+            [DataMember(IsRequired = true)]
+            public string RegionName;
 
-        static private CraigslistContextList Contexts;
-        private System.Timers.Timer PollTimer;
+            [DataMember(IsRequired = true)]
+            public string Category;
+
+            [DataMember]
+            public string SearchString;
+
+            [DataMember]
+            public int? MaxPrice;
+
+            [DataMember]
+            public int? MinPrice;
+
+            [DataMember]
+            public int? MaxModelYear;
+
+            [DataMember]
+            public int? MinModelYear;
+
+            [DataMember]
+            public bool CleanTitleOnly;
+
+            [DataMember]
+            public bool? IncludeNearbyAreas;
+
+            // excluded terms?
+            //[DataMember]
+            //public List<string>? ExcludedTerms; 
+        }
+
+        private CraigslistContextList Contexts;
 
         bool Muted;
 
@@ -63,8 +95,6 @@ namespace Fatty
             if (Contexts == null)
             {
                 Contexts = FattyHelpers.DeserializeFromPath<CraigslistContextList>("Craigslist.cfg");
-
-                PollTimerElapsed(this, null);
             }
         }
 
@@ -94,23 +124,30 @@ namespace Fatty
             }
         }
 
-        async void PollTimerElapsed(object sender, ElapsedEventArgs e)
+        static async void ListenForPosts(CraigslistModule sender)
         {
             // check each query
-            while (true)
+            while (sender != null)
             {
                 try
                 {
                     var client = new CraigslistStreamingClient();
+                    CraigslistWatch firstWatch = sender.Contexts.AllContexts[0].WatchList[0];
 
-                    var request = new SearchForSaleRequest("sfbay", SearchForSaleRequest.Categories.All)
+                    var request = new SearchForSaleRequest(firstWatch.RegionName, firstWatch.Category)
                     {
-                        SearchText = "",
+                        SearchText = firstWatch.SearchString,
+                        TitleStatuses = firstWatch.CleanTitleOnly == true ? new[] { SearchForSaleRequest.TitleStatus.Clean } : null,
+                        MaxPrice = firstWatch.MaxPrice,
+                        MinPrice = firstWatch.MinPrice,
+                        MinModelYear = firstWatch.MinModelYear,
+                        IncludeNearbyAreas = (firstWatch.IncludeNearbyAreas != null ? (bool)firstWatch.IncludeNearbyAreas : false)
                     };
 
-                    await foreach (var posting in client.StreamPostings(request))
+                    await foreach (var posting in client.StreamSearchResults(request))
                     {
-                        Fatty.PrintToScreen($"{posting.Price} : {posting.Title} - {posting.PostingUrl}");
+                        sender.OwningChannel.SendChannelMessage($"{posting.Price} : {posting.Title} - {posting.PostingUrl}");
+                        await Task.Delay(750);
                     }
                 }
                 catch (Exception ex)
@@ -118,6 +155,17 @@ namespace Fatty
                     Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
                 }
             }
+            Fatty.PrintWarningToScreen("Craigslist Cleanup occurred");
+        }
+
+        void OnChannelJoined(string ircChannel)
+        {
+            ListenForPosts(this);
+        }
+
+        public override void RegisterEvents()
+        {
+            OwningChannel.ChannelJoinedEvent += OnChannelJoined;
         }
     }
 }
