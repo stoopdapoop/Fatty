@@ -79,7 +79,7 @@ namespace Fatty
 
         public override void RegisterAvailableCommands(ref List<UserCommand> Commands)
         {
-            Commands.Add(new UserCommand("craigstlist", CraigslistCommand, "call with 'mute' or 'unmute' to silence and resume craiglist reading"));
+            Commands.Add(new UserCommand("craigslist", CraigslistCommand, "call with 'mute' or 'unmute' to silence and resume craiglist reading"));
         }
 
         public override void PostConnectionModuleInit()
@@ -141,13 +141,19 @@ namespace Fatty
                         MaxPrice = firstWatch.MaxPrice,
                         MinPrice = firstWatch.MinPrice,
                         MinModelYear = firstWatch.MinModelYear,
-                        IncludeNearbyAreas = (firstWatch.IncludeNearbyAreas != null ? (bool)firstWatch.IncludeNearbyAreas : false)
+                        IncludeNearbyAreas = (firstWatch.IncludeNearbyAreas != null ? (bool)firstWatch.IncludeNearbyAreas : false),
                     };
 
+                    // todo: get rid of this when library is updated
+                    request.SetParameter("purveyor", "owner");
+                   
                     await foreach (var posting in client.StreamSearchResults(request))
                     {
-                        sender.OwningChannel.SendChannelMessage($"{posting.Price} : {posting.Title} - {posting.PostingUrl}");
-                        await Task.Delay(750);
+                        if (!sender.Muted)
+                        {
+                            sender.OwningChannel.SendChannelMessage($"4{posting.Price} : {posting.Title} - {posting.PostingUrl}");
+                            await Task.Delay(750);
+                        }
                     }
                 }
                 catch (Exception ex)
