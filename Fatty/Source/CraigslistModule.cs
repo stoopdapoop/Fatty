@@ -66,9 +66,11 @@ namespace Fatty
             [DataMember]
             public SearchForSaleRequest.Purveyors? Purveyor;
 
-            // excluded terms?
-            //[DataMember]
-            //public List<string>? ExcludedTerms; 
+            [DataMember]
+            public List<SearchForSaleRequest.MotorcycleType>? MotorcycleTypes;
+
+           [DataMember]
+           public List<string>? ExcludedTerms; 
         }
 
         private CraigslistContextList Contexts;
@@ -146,13 +148,21 @@ namespace Fatty
                         MinModelYear = firstWatch.MinModelYear,
                         MaxModelYear = firstWatch.MaxModelYear,
                         IncludeNearbyAreas = (firstWatch.IncludeNearbyAreas != null ? (bool)firstWatch.IncludeNearbyAreas : false),
-                        Purveyor = firstWatch.Purveyor == null ? SearchForSaleRequest.Purveyors.All : (SearchForSaleRequest.Purveyors)firstWatch.Purveyor
+                        Purveyor = firstWatch.Purveyor == null ? SearchForSaleRequest.Purveyors.All : (SearchForSaleRequest.Purveyors)firstWatch.Purveyor,
+                        MotorcycleTypes = firstWatch.MotorcycleTypes,
                     };
                    
                     await foreach (var posting in client.StreamSearchResults(request))
                     {
                         if (!sender.Muted)
                         {
+                            if(firstWatch.ExcludedTerms != null)
+                            {
+                                if(sender.TitleContainsExclusion(posting.Title, firstWatch.ExcludedTerms))
+                                {
+                                    continue;
+                                }
+                            }
                             sender.OwningChannel.SendChannelMessage($"4{posting.Price} : {posting.Title} - {posting.PostingUrl}");
                             await Task.Delay(750);
                         }
@@ -164,6 +174,19 @@ namespace Fatty
                 }
             }
             Fatty.PrintWarningToScreen("Craigslist Cleanup occurred");
+        }
+
+        private bool TitleContainsExclusion(string title, IEnumerable<string> Exclusions)
+        {
+            foreach (string exclusion in Exclusions)
+            {
+                if (title.Contains(exclusion, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         void OnChannelJoined(string ircChannel)
