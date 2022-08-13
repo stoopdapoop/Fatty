@@ -43,7 +43,7 @@ namespace Fatty
             public string Category;
 
             [DataMember]
-            public string SearchString;
+            public string? SearchString;
 
             [DataMember]
             public int? MaxPrice;
@@ -62,6 +62,9 @@ namespace Fatty
 
             [DataMember]
             public bool? IncludeNearbyAreas;
+
+            [DataMember]
+            public SearchForSaleRequest.Purveyors? Purveyor;
 
             // excluded terms?
             //[DataMember]
@@ -141,11 +144,10 @@ namespace Fatty
                         MaxPrice = firstWatch.MaxPrice,
                         MinPrice = firstWatch.MinPrice,
                         MinModelYear = firstWatch.MinModelYear,
+                        MaxModelYear = firstWatch.MaxModelYear,
                         IncludeNearbyAreas = (firstWatch.IncludeNearbyAreas != null ? (bool)firstWatch.IncludeNearbyAreas : false),
+                        Purveyor = firstWatch.Purveyor == null ? SearchForSaleRequest.Purveyors.All : (SearchForSaleRequest.Purveyors)firstWatch.Purveyor
                     };
-
-                    // todo: get rid of this when library is updated
-                    request.SetParameter("purveyor", "owner");
                    
                     await foreach (var posting in client.StreamSearchResults(request))
                     {
