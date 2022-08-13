@@ -1,1 +1,1 @@
-dotnet publish ".\Fatty\Fatty.csproj" -r linux-arm -c release
+dotnet publish ".\Fatty\Fatty.csproj" --self-contained -r linux-arm -c release
