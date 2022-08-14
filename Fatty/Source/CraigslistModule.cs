@@ -52,6 +52,12 @@ namespace Fatty
             public int? MinPrice;
 
             [DataMember]
+            public int? MinEngineDisplacement;
+
+            [DataMember]
+            public int? MaxEngineDisplacement;
+
+            [DataMember]
             public int? MaxModelYear;
 
             [DataMember]
@@ -147,6 +153,8 @@ namespace Fatty
                         MinPrice = firstWatch.MinPrice,
                         MinModelYear = firstWatch.MinModelYear,
                         MaxModelYear = firstWatch.MaxModelYear,
+                        MinEngineDisplacement = firstWatch.MinEngineDisplacement,
+                        MaxEngineDisplacement = firstWatch.MaxEngineDisplacement,
                         IncludeNearbyAreas = (firstWatch.IncludeNearbyAreas != null ? (bool)firstWatch.IncludeNearbyAreas : false),
                         Purveyor = firstWatch.Purveyor == null ? SearchForSaleRequest.Purveyors.All : (SearchForSaleRequest.Purveyors)firstWatch.Purveyor,
                         MotorcycleTypes = firstWatch.MotorcycleTypes,
