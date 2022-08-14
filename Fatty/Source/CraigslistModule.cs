@@ -163,7 +163,7 @@ namespace Fatty
                                     continue;
                                 }
                             }
-                            sender.OwningChannel.SendChannelMessage($"4{posting.Price} : {posting.Title} - {posting.PostingUrl}");
+                            sender.OwningChannel.SendChannelMessage($"{posting.Price} : {posting.Title} - {posting.PostingUrl}");
                             await Task.Delay(750);
                         }
                     }
