@@ -38,6 +38,7 @@ namespace Fatty
             ModuleTypes.Add(typeof(WolframModule));
             ModuleTypes.Add(typeof(GoogleModule));
             ModuleTypes.Add(typeof(CraigslistModule));
+            ModuleTypes.Add(typeof(SteamModule));
 
             // Todo: loop through server contexts and connect to each
             List<ServerContext> ServerContexts = LoadServerConfigs();
