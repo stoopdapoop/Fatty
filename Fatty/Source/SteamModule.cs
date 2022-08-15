@@ -166,7 +166,7 @@ namespace Fatty
                                 if (pollResponse.Servers != null && pollResponse.Servers.Count > 0)
                                 {
                                     var firstServer = pollResponse.Servers[0];
-                                    OwningChannel.SendChannelMessage($"AHHHHHHHHHHHHHHHH, netokyo server \"{pollResponse.Servers[0].ServerName}\" has { firstServer.PlayerCount } nerds in it");
+                                    OwningChannel.SendChannelMessage($"AHHHHHHHHHHHHHHHH, neotokyo server \"{pollResponse.Servers[0].ServerName}\" has { firstServer.PlayerCount } nerds in it");
                                 }
                             }
                         }
