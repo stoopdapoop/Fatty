@@ -94,6 +94,20 @@ namespace Fatty
 
             // todo: make it so I only care about my own contexts
             Config = FattyHelpers.DeserializeFromPath<SteamConfig>("Steam.cfg");
+            List<SteamChannelContext> activeContexts = new List<SteamChannelContext>();
+
+            foreach(var context in Config.Contexts)
+            {
+                if (context.ServerName.Equals(OwningChannel.ServerName, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (context.ChannelName.Equals(OwningChannel.ChannelName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        activeContexts.Add(context);
+                    }
+                }
+            }
+
+            Config.Contexts = activeContexts;
         }
 
         public override void RegisterEvents()
@@ -111,14 +125,21 @@ namespace Fatty
             OwningChannel.ChannelJoinedEvent += OnChannelJoined;
         }
 
-        void OnChannelJoined(string ircChannel)
+        async void OnChannelJoined(string ircChannel)
         {
             // todo: move this somewhere else
             CancellationTokenSource tokenSource = new CancellationTokenSource();
-            PollNeotokyoServers(tokenSource.Token);
+            Random rand = new Random();
+            
+            foreach (SteamChannelContext context in Config.Contexts)
+            {
+                // make each instance of the module wait some amount of time so we don't get in trouble for spamming.
+                await Task.Delay(rand.Next(500, 1000));
+                PollNeotokyoServers(context, tokenSource.Token);
+            }
         }
 
-        async void PollNeotokyoServers(CancellationToken cancel)
+        async void PollNeotokyoServers(SteamChannelContext context, CancellationToken cancel)
         {
             RestClient client = new RestClient("https://api.steampowered.com");
 
@@ -127,7 +148,7 @@ namespace Fatty
             request.AddQueryParameter("filter", @"gamedir\NeotokyoSource\empty\1");
 
             TimeSpan PollInterval = TimeSpan.FromMinutes(Config.PollFrequencyMinutes);
-            TimeSpan SleepTime = TimeSpan.FromMinutes(Config.Contexts[0].MessageCooldownMinutes);
+            TimeSpan SleepTime = TimeSpan.FromMinutes(context.MessageCooldownMinutes);
 
             while (!cancel.IsCancellationRequested)
             {
@@ -145,7 +166,7 @@ namespace Fatty
                                 if (pollResponse.Servers != null && pollResponse.Servers.Count > 0)
                                 {
                                     var firstServer = pollResponse.Servers[0];
-                                    OwningChannel.SendChannelMessage($"AHHHHHHHHHHHHHHHH, netokyo server \"{pollResponse.Servers[0].ServerName}\" has more than {Config.Contexts[0].MinPlayerThreshold} nerds in it");
+                                    OwningChannel.SendChannelMessage($"AHHHHHHHHHHHHHHHH, netokyo server \"{pollResponse.Servers[0].ServerName}\" has more than {context.MinPlayerThreshold} nerds in it");
                                 }
                             }
                         }
