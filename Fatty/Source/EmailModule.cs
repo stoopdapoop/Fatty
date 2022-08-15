@@ -79,7 +79,6 @@ namespace Fatty
                     catch (Exception e)
                     {
                         Fatty.PrintWarningToScreen($"Error sending mail from address {EmailSettings.EmailAddress} - {e.Message}", e.StackTrace);
-                        Fatty.PrintToScreen(e.StackTrace, ConsoleColor.Yellow);
                         return false;
                     }
 
