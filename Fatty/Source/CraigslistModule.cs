@@ -79,7 +79,7 @@ namespace Fatty
            public List<string>? ExcludedTerms; 
         }
 
-        private CraigslistContextList Contexts;
+        private List<CraigslistContext> ActiveContexts;
 
         bool Muted;
 
@@ -103,9 +103,20 @@ namespace Fatty
             base.ChannelInit(channel);
 
             // lazy init configuration file
-            if (Contexts == null)
+            CraigslistContextList Contexts = FattyHelpers.DeserializeFromPath<CraigslistContextList>("Craigslist.cfg");
+            if(Contexts != null)
             {
-                Contexts = FattyHelpers.DeserializeFromPath<CraigslistContextList>("Craigslist.cfg");
+                ActiveContexts = new List<CraigslistContext>();
+                foreach (var context in Contexts.AllContexts)
+                {
+                    if (context.ServerName == OwningChannel.ServerName)
+                    {
+                        if (context.ChannelName == OwningChannel.ChannelName)
+                        {
+                            ActiveContexts.Add(context);
+                        }
+                    }
+                }
             }
         }
 
@@ -143,7 +154,7 @@ namespace Fatty
                 try
                 {
                     var client = new CraigslistStreamingClient();
-                    CraigslistWatch firstWatch = sender.Contexts.AllContexts[0].WatchList[0];
+                    CraigslistWatch firstWatch = sender.ActiveContexts[0].WatchList[0];
 
                     var request = new SearchForSaleRequest(firstWatch.RegionName, firstWatch.Category)
                     {
