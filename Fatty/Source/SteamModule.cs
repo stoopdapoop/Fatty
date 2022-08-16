@@ -157,6 +157,8 @@ namespace Fatty
                     var result = await client.ExecuteAsync(request);
                     if (result.IsSuccessful)
                     {
+
+                        List<SteamGameServer> PopulatedServers = new List<SteamGameServer>();
                         try
                         {
                             SteamServerResult pollResult = FattyHelpers.DeserializeFromJsonString<SteamServerResult>(result.Content);
@@ -165,8 +167,13 @@ namespace Fatty
                             {
                                 if (pollResponse.Servers != null && pollResponse.Servers.Count > 0)
                                 {
-                                    var firstServer = pollResponse.Servers[0];
-                                    OwningChannel.SendChannelMessage($"AHHHHHHHHHHHHHHHH, neotokyo server \"{pollResponse.Servers[0].ServerName}\" has { firstServer.PlayerCount } nerds in it");
+                                    foreach (var server in pollResponse.Servers)
+                                    {
+                                        if (server.PlayerCount >= context.MinPlayerThreshold)
+                                        {
+                                            PopulatedServers.Add(server);
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -175,7 +182,23 @@ namespace Fatty
                             Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
                         }
 
-                        await Task.Delay(SleepTime);
+                        if(PopulatedServers.Count > 0)
+                        {
+                            if (PopulatedServers.Count == 1)
+                            {
+                                OwningChannel.SendChannelMessage($"Neotokyo server \"{PopulatedServers[0].ServerName}\" has { PopulatedServers[0].PlayerCount } nerds in it");
+                            }
+                            else
+                            {
+                                OwningChannel.SendChannelMessage($"{PopulatedServers.Count} Neotokyo servers have {context.MinPlayerThreshold} or more nerds in them");
+                            }
+
+                            await Task.Delay(SleepTime);
+                        }
+                        else
+                        {
+                            await Task.Delay(PollInterval);
+                        }
                     }
                     else
                     {
