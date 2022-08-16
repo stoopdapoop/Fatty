@@ -38,8 +38,8 @@ namespace Fatty
             [DataMember(IsRequired = true)]
             public int MessageCooldownMinutes;
 
-            [IgnoreDataMember]
-            public DateTime LastMessage;
+            [DataMember]
+            public bool ShouldPoll;
         }
 
         [DataContract]
@@ -135,9 +135,12 @@ namespace Fatty
             
             foreach (SteamChannelContext context in Config.Contexts)
             {
-                // make each instance of the module wait some amount of time so we don't get in trouble for spamming.
-                await Task.Delay(rand.Next(500, 1000));
-                PollNeotokyoServers(context, tokenSource.Token);
+                if (context.ShouldPoll)
+                {
+                    // make each instance of the module wait some amount of time so we don't get in trouble for spamming.
+                    await Task.Delay(rand.Next(500, 1000));
+                    PollNeotokyoServers(context, tokenSource.Token);
+                }
             }
         }
 
