@@ -112,17 +112,19 @@ namespace Fatty
 
         public override void RegisterEvents()
         {
-            
+            OwningChannel.ChannelJoinedEvent += OnChannelJoined;
         }
 
         public override void ListCommands(ref List<string> CommandNames)
         {
-            
+            CommandNames.Add("neotokyo");
+            CommandNames.Add("nt");
         }
 
         public override void RegisterAvailableCommands(ref List<UserCommand> Commands)
         {
-            OwningChannel.ChannelJoinedEvent += OnChannelJoined;
+            Commands.Add(new UserCommand("neotokyo", NeotokyoCommand, "checks to see if there are any populated neotokyo servesr"));
+            Commands.Add(new UserCommand("nt", NeotokyoCommand, "checks to see if there are any populated neotokyo servesr"));
         }
 
         async void OnChannelJoined(string ircChannel)
@@ -137,6 +139,56 @@ namespace Fatty
                 await Task.Delay(rand.Next(500, 1000));
                 PollNeotokyoServers(context, tokenSource.Token);
             }
+        }
+
+        private void NeotokyoCommand(string ircUser, string ircChannel, string message)
+        {
+            try
+            {
+                RestClient client = new RestClient("https://api.steampowered.com");
+
+                RestRequest request = new RestRequest("IGameServersService/GetServerList/v1/");
+                request.AddQueryParameter("key", Config.APIKey);
+                request.AddQueryParameter("filter", @"gamedir\NeotokyoSource\empty\1");
+
+                var result = client.Execute(request);
+
+                if (result.IsSuccessful)
+                {
+                    SteamServerResult pollResult = FattyHelpers.DeserializeFromJsonString<SteamServerResult>(result.Content);
+                    SteamServerResponse pollResponse = pollResult.Response;
+                    bool reported = false;
+
+                    if (pollResponse != null)
+                    {
+                        if (pollResponse.Servers != null && pollResponse.Servers.Count > 0)
+                        {
+                            int maxPop = 0;
+                            foreach (var server in pollResponse.Servers)
+                            {
+                                maxPop = Math.Max(maxPop, server.PlayerCount);
+                            }
+
+                            reported = true;
+                            OwningChannel.SendChannelMessage($"there are {pollResponse.Servers.Count} populated servers. The highest population is {maxPop}");         
+                        }
+                    }
+                    if(!reported)
+                    {
+                        OwningChannel.SendChannelMessage("no populated servers :[");
+                    }
+                }
+                else
+                {
+                    OwningChannel.SendChannelMessage("something bad happened");
+                }    
+            }
+
+            catch (Exception ex)
+            {
+                OwningChannel.SendChannelMessage("Something messed up");
+            }
+
         }
 
         async void PollNeotokyoServers(SteamChannelContext context, CancellationToken cancel)
@@ -157,7 +209,6 @@ namespace Fatty
                     var result = await client.ExecuteAsync(request);
                     if (result.IsSuccessful)
                     {
-
                         List<SteamGameServer> PopulatedServers = new List<SteamGameServer>();
                         try
                         {
@@ -210,7 +261,6 @@ namespace Fatty
                     Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
                 }
             }
-            
         }
     }
 }
