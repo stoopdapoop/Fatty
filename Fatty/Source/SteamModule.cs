@@ -82,6 +82,10 @@ namespace Fatty
         SteamConfig Config;
 
         CancellationTokenSource PollCancellationSource;
+                
+        const string APIBaseAddress = "https://api.steampowered.com";
+        const string ServerListEndpoint = "IGameServersService/GetServerList/v1/";
+        const string FilterParams = @"gamedir\NeotokyoSource\empty\1\password\0";
 
         public override void ChannelInit(ChannelContext channel)
         {
@@ -123,8 +127,8 @@ namespace Fatty
 
         public override void RegisterAvailableCommands(ref List<UserCommand> Commands)
         {
-            Commands.Add(new UserCommand("neotokyo", NeotokyoCommand, "checks to see if there are any populated neotokyo servesr"));
-            Commands.Add(new UserCommand("nt", NeotokyoCommand, "checks to see if there are any populated neotokyo servesr"));
+            Commands.Add(new UserCommand("neotokyo", NeotokyoCommand, "checks to see if there are any populated Neotokyo servers"));
+            Commands.Add(new UserCommand("nt", NeotokyoCommand, "checks to see if there are any populated Neotokyo servers"));
         }
 
         async void OnChannelJoined(string ircChannel)
@@ -148,11 +152,9 @@ namespace Fatty
         {
             try
             {
-                RestClient client = new RestClient("https://api.steampowered.com");
+                RestClient client = new RestClient(APIBaseAddress);
 
-                RestRequest request = new RestRequest("IGameServersService/GetServerList/v1/");
-                request.AddQueryParameter("key", Config.APIKey);
-                request.AddQueryParameter("filter", @"gamedir\NeotokyoSource\empty\1");
+                RestRequest request = GetNeotokyoServerRequest();
 
                 var result = client.Execute(request);
 
@@ -196,11 +198,9 @@ namespace Fatty
 
         async void PollNeotokyoServers(SteamChannelContext context, CancellationToken cancel)
         {
-            RestClient client = new RestClient("https://api.steampowered.com");
+            RestClient client = new RestClient(APIBaseAddress);
 
-            RestRequest request = new RestRequest("IGameServersService/GetServerList/v1/");
-            request.AddQueryParameter("key", Config.APIKey);
-            request.AddQueryParameter("filter", @"gamedir\NeotokyoSource\empty\1");
+            RestRequest request = GetNeotokyoServerRequest();
 
             TimeSpan PollInterval = TimeSpan.FromMinutes(Config.PollFrequencyMinutes);
             TimeSpan SleepTime = TimeSpan.FromMinutes(context.MessageCooldownMinutes);
@@ -264,6 +264,15 @@ namespace Fatty
                     Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
                 }
             }
+        }
+
+        private RestRequest GetNeotokyoServerRequest()
+        {
+            RestRequest request = new RestRequest(ServerListEndpoint);
+            request.AddQueryParameter("key", Config.APIKey);
+            request.AddQueryParameter("filter", FilterParams);
+
+            return request;
         }
     }
 }
