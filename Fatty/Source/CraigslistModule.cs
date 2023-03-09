@@ -149,49 +149,63 @@ namespace Fatty
         static async void ListenForPosts(CraigslistModule sender)
         {
             // check each query
-            while (sender != null)
+            try
             {
-                try
-                {
-                    var client = new CraigslistStreamingClient();
-                    CraigslistWatch firstWatch = sender.ActiveContexts[0].WatchList[0];
+                var client = new CraigslistStreamingClient();
+                CraigslistWatch firstWatch = sender.ActiveContexts[0].WatchList[0];
 
-                    var request = new SearchForSaleRequest(firstWatch.RegionName, firstWatch.Category)
+                var request = new SearchForSaleRequest(firstWatch.RegionName, firstWatch.Category)
+                {
+                    SearchText = firstWatch.SearchString,
+                    TitleStatuses = firstWatch.CleanTitleOnly == true ? new[] { SearchForSaleRequest.TitleStatus.Clean } : null,
+                    MaxPrice = firstWatch.MaxPrice,
+                    MinPrice = firstWatch.MinPrice,
+                    MinModelYear = firstWatch.MinModelYear,
+                    MaxModelYear = firstWatch.MaxModelYear,
+                    MinEngineDisplacement = firstWatch.MinEngineDisplacement,
+                    MaxEngineDisplacement = firstWatch.MaxEngineDisplacement,
+                    IncludeNearbyAreas = (firstWatch.IncludeNearbyAreas != null ? (bool)firstWatch.IncludeNearbyAreas : false),
+                    Purveyor = firstWatch.Purveyor == null ? SearchForSaleRequest.Purveyors.All : (SearchForSaleRequest.Purveyors)firstWatch.Purveyor,
+                    MotorcycleTypes = firstWatch.MotorcycleTypes,
+                };
+
+                while (sender != null)
+                {
+                    try
                     {
-                        SearchText = firstWatch.SearchString,
-                        TitleStatuses = firstWatch.CleanTitleOnly == true ? new[] { SearchForSaleRequest.TitleStatus.Clean } : null,
-                        MaxPrice = firstWatch.MaxPrice,
-                        MinPrice = firstWatch.MinPrice,
-                        MinModelYear = firstWatch.MinModelYear,
-                        MaxModelYear = firstWatch.MaxModelYear,
-                        MinEngineDisplacement = firstWatch.MinEngineDisplacement,
-                        MaxEngineDisplacement = firstWatch.MaxEngineDisplacement,
-                        IncludeNearbyAreas = (firstWatch.IncludeNearbyAreas != null ? (bool)firstWatch.IncludeNearbyAreas : false),
-                        Purveyor = firstWatch.Purveyor == null ? SearchForSaleRequest.Purveyors.All : (SearchForSaleRequest.Purveyors)firstWatch.Purveyor,
-                        MotorcycleTypes = firstWatch.MotorcycleTypes,
-                    };
-                   
-                    await foreach (var posting in client.StreamSearchResults(request))
-                    {
-                        if (!sender.Muted)
+                        await foreach (var posting in client.StreamSearchResults(request))
                         {
-                            if(firstWatch.ExcludedTerms != null)
+                            if (!sender.Muted)
                             {
-                                if(sender.TitleContainsExclusion(posting.Title, firstWatch.ExcludedTerms))
+                                if (firstWatch.ExcludedTerms != null)
                                 {
-                                    continue;
+                                    if (sender.TitleContainsExclusion(posting.Title, firstWatch.ExcludedTerms))
+                                    {
+                                        continue;
+                                    }
                                 }
+                                sender.OwningChannel.SendChannelMessage($"{posting.Price} : {posting.Title} - {posting.PostingUrl}");
+                                await Task.Delay(750);
                             }
-                            sender.OwningChannel.SendChannelMessage($"{posting.Price} : {posting.Title} - {posting.PostingUrl}");
-                            await Task.Delay(750);
                         }
                     }
-                }
-                catch (Exception ex)
-                {
-                    Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
+                    catch (NullReferenceException ex)
+                    {
+                        Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
+                        sender.OwningChannel.SendChannelMessage("Uh oh, craigslist is on to us");
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
+                    }
                 }
             }
+            catch(Exception ex)
+            {
+                Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
+            }
+
             Fatty.PrintWarningToScreen("Craigslist Cleanup occurred");
         }
 
