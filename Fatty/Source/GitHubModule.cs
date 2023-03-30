@@ -7,6 +7,8 @@ using System.Runtime.Serialization.Json;
 using System.Timers;
 using System.Threading;
 using System.Text;
+using System.Linq;
+using Microsoft.EntityFrameworkCore;
 
 namespace Fatty
 {
@@ -41,10 +43,16 @@ namespace Fatty
             public DateTime LastSeen;
 
             [IgnoreDataMember]
-            public bool IsValidEndpoint;
+            public bool IsValidEndpoint = true;
 
             [IgnoreDataMember]
             public Dictionary<string, string> LatestWikiHash;
+
+            [IgnoreDataMember]
+            public int PollInterval;
+
+            [IgnoreDataMember]
+            public string? Etag;
 
             [OnDeserialized]
             private void DeserializationInitializer(StreamingContext ctx)
@@ -204,6 +212,13 @@ namespace Fatty
 
         #endregion
 
+        class BatchedRequest : RestRequest
+        {
+            public BatchedRequest(string resource) : base(resource) { }
+
+            public List<(GitHubContext, Action<IRestResponse, GitHubContext>)> Listeners { get; set; }
+        }
+
         class FattyRequest : RestRequest
         {
             public FattyRequest(string resource) : base(resource) { }
@@ -224,6 +239,8 @@ namespace Fatty
                 SerializerSettings = new DataContractJsonSerializerSettings();
                 SerializerSettings.DateTimeFormat = new DateTimeFormat("yyyy-MM-ddTHH:mm:ssZ");
             }
+
+            GitHubQueryScheduler.InitScheduler();
         }
 
         public override void RegisterAvailableCommands(ref List<UserCommand> Commands)
@@ -240,11 +257,11 @@ namespace Fatty
         {
             base.ChannelInit(channel);
 
-            Action<IRestResponse> FirstResponseCallback = r => {
-                if (r.Request is FattyRequest)
+            Action<IRestResponse, GitHubContext> FirstResponseCallback = (r, c) => {
+                if (r.Request is BatchedRequest)
                 {
-                    FattyRequest owningRequest = (FattyRequest)r.Request;
-                    GitHubContext owningContext = (GitHubContext)owningRequest.UserState;
+                    BatchedRequest owningRequest = (BatchedRequest)r.Request;
+                    GitHubContext owningContext = c;
 
                     if (r.IsSuccessful && owningContext != null)
                     {
@@ -265,6 +282,27 @@ namespace Fatty
                                 }
                             }
                         }
+
+                        var pollHeader = r.Headers.Single(header => { return header.Name == "X-Poll-Interval"; });
+                        int pollInterval = 60;
+                        if (pollHeader != null)
+                        {
+                            if (!int.TryParse((string)r.Headers.Single(header => { return header.Name == "X-Poll-Interval"; }).Value, out pollInterval))
+                            {
+                                // have to set again, since tryparse zeroes on failure
+                                pollInterval = 60;
+                            }
+
+                        }
+                        owningContext.PollInterval = pollInterval;
+
+                        var ETagHeader = r.Headers.Single(header => { return header.Name == "ETag"; });
+                        string? ETag = null;
+                        if (ETagHeader is not null)
+                        {
+                            ETag = (string?)ETagHeader.Value;
+                        }
+                        owningContext.Etag = ETag;
                     }
                     else
                     {
@@ -284,7 +322,7 @@ namespace Fatty
             // only care about channels that this channel is looking at
             foreach(GitHubContext ghContext in contextListing.AllContexts)
             {
-                if(ghContext.ServerName == OwningChannel.ServerName && ghContext.ChannelName == OwningChannel.ChannelName)
+                if (ghContext.ServerName == OwningChannel.ServerName && ghContext.ChannelName == OwningChannel.ChannelName)
                 {
                     ActiveChannelContexts.Add(ghContext);
                 }
@@ -293,17 +331,10 @@ namespace Fatty
 
             foreach (GitHubContext ghContext in ActiveChannelContexts)
             {
-                RestClient client = new RestClient(ghContext.ProjectEndpoint);
-                var authen = new JwtAuthenticator(ghContext.AccessToken);
-                client.Authenticator = authen;
-
-                FattyRequest request = new FattyRequest("events");
-                request.UserState = ghContext;
-
-                client.ExecuteAsync(request, FirstResponseCallback);
+                GitHubQueryScheduler.ScheduleQuery(ghContext, FirstResponseCallback);
             }
 
-            PollTimer = new System.Timers.Timer(TimeSpan.FromSeconds(30.0).TotalMilliseconds);
+            PollTimer = new System.Timers.Timer(TimeSpan.FromSeconds(60).TotalMilliseconds);
             PollTimer.Elapsed += PollTimerElapsed;
             PollTimer.AutoReset = true;
             PollTimer.Start();
@@ -312,17 +343,17 @@ namespace Fatty
 
         void PollTimerElapsed(object sender, ElapsedEventArgs e)
         {
-            Action<IRestResponse> PollEventsCallback = r => {
-                if (r.Request is FattyRequest)
+            Action<IRestResponse, GitHubContext> PollEventsCallback = (r, c) => {
+                if (r.Request is BatchedRequest)
                 {
-                    FattyRequest owningRequest = (FattyRequest)r.Request;
-                    GitHubContext owningContext = (GitHubContext)owningRequest.UserState;
-
+                    BatchedRequest owningRequest = (BatchedRequest)r.Request;
+                    GitHubContext owningContext = c;
                     
                     if (r.IsSuccessful && owningContext != null)
                     {
                         List<GitHubEvent> LatestEvents = FattyHelpers.DeserializeFromJsonString<List<GitHubEvent>>(r.Content, SerializerSettings);
                         List<GitHubEvent> UnseenEvents = new List<GitHubEvent>();
+
                         if (LatestEvents != null && LatestEvents.Count > 0)
                         {
                             foreach (GitHubEvent latestEvent in LatestEvents)
@@ -356,20 +387,19 @@ namespace Fatty
                 }
             };
 
-            foreach (GitHubContext ghContext in ActiveChannelContexts)
+            try
             {
-                if (ghContext.IsValidEndpoint)
+                foreach (GitHubContext ghContext in ActiveChannelContexts)
                 {
-                    RestClient client = new RestClient(ghContext.ProjectEndpoint);
-
-                    var authen = new JwtAuthenticator(ghContext.AccessToken);
-                    client.Authenticator = authen;
-
-                    FattyRequest request = new FattyRequest("events");
-                    request.UserState = ghContext;
-
-                    client.ExecuteAsync(request, PollEventsCallback);
+                    if (ghContext.IsValidEndpoint)
+                    {
+                        GitHubQueryScheduler.ScheduleQuery(ghContext, PollEventsCallback);
+                    }
                 }
+            }
+            catch (Exception ex) 
+            {
+                Fatty.PrintWarningToScreen($"Github Issue: {ex.Message}", Environment.StackTrace);
             }
         }
 
@@ -502,6 +532,96 @@ namespace Fatty
             }
 
             return ReturnString;
+        }
+
+        static public class GitHubQueryScheduler
+        {
+            private static Mutex mut = new Mutex();
+            private static Dictionary<string, List<(GitHubContext, Action<IRestResponse, GitHubContext>)>> GithubQueue = new Dictionary<string, List<(GitHubContext, Action<IRestResponse,GitHubContext>)>>();
+            private static System.Timers.Timer PollTimer = null;
+
+            public static void InitScheduler()
+            {
+                lock (mut)
+                {
+                    if (PollTimer == null)
+                    {
+                        PollTimer = new System.Timers.Timer(2000);
+                        PollTimer.Elapsed += ExecuteQueries;
+                        PollTimer.AutoReset = true;
+                        PollTimer.Start();
+                    }
+                }
+            }
+            public static void ScheduleQuery(GitHubContext context, Action<IRestResponse, GitHubContext> callback) 
+            { 
+                lock (mut) 
+                {
+                    // basically shit-hashing based on relevant data
+                    // don't change without also fixing access token assumption in execute queries
+                    string mapKey = context.ProjectEndpoint + context.AccessToken;
+                    List < (GitHubContext, Action<IRestResponse, GitHubContext>)> current;
+                    if (!GithubQueue.TryGetValue(mapKey, out current))
+                    {
+                        var newList = new List<(GitHubContext, Action<IRestResponse, GitHubContext>)>();
+                        newList.Add((context, callback));
+                        GithubQueue[mapKey] = newList;
+                    }
+                    else
+                    {
+                        current.Add((context, callback));
+                    }
+                }
+            }
+
+            private static void ExecuteQueries(object sender, ElapsedEventArgs e)
+            {
+                Action<IRestResponse> callback = r =>
+                {
+                    if (r.Request is BatchedRequest)
+                    {
+                        BatchedRequest owningRequest = (BatchedRequest)r.Request;
+                        var listeners = owningRequest.Listeners;
+
+                        foreach(var listener in listeners)
+                        {
+                            listener.Item2.Invoke(r, listener.Item1);
+                        }
+                    }
+                };
+
+                // forgive me father
+                IEnumerable<KeyValuePair<string, List<(GitHubContext, Action<IRestResponse, GitHubContext>)>>> queriesCopy;
+                // don't want to hold this mutex for too long, so make a copy of the queue
+                lock (mut)
+                {
+                    queriesCopy = GithubQueue.ToArray();
+                    GithubQueue.Clear();
+                }
+
+                foreach (var query in queriesCopy)
+                {
+                    // they all have the same access token, guaranteed by hash key upon insertion
+                    GitHubContext gitHubContext = query.Value[0].Item1;
+
+
+                    RestClient client = new RestClient(gitHubContext.ProjectEndpoint);
+                    var authen = new JwtAuthenticator(gitHubContext.AccessToken);
+                    client.Authenticator = authen;
+
+                    BatchedRequest request = new BatchedRequest("events");
+
+                    // eventually set this up and only dispatch a real poll if the info has changed
+                    //if (gitHubContext.Etag != null)
+                    //{
+                    //    request.AddHeader("If-None-Match", gitHubContext.Etag);
+                    //}
+
+                    request.Listeners = query.Value;
+
+                    client.ExecuteAsync(request, callback);
+                }
+            }
         }
     }
 }
