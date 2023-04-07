@@ -537,7 +537,7 @@ namespace Fatty
         static public class GitHubQueryScheduler
         {
             private static Mutex mut = new Mutex();
-            private static Dictionary<string, List<(GitHubContext, Action<IRestResponse, GitHubContext>)>> GithubQueue = new Dictionary<string, List<(GitHubContext, Action<IRestResponse,GitHubContext>)>>();
+            private static Dictionary<string, List<(GitHubContext, Action<IRestResponse, GitHubContext>)>> GithubQueue = new();
             private static System.Timers.Timer PollTimer = null;
 
             public static void InitScheduler()
