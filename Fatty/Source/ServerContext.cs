@@ -262,15 +262,19 @@ namespace Fatty
 #nullable enable
         public IrcLogUser? GetLoggedUserInfo(string ircUser)
         {
+
             IrcLogUser? foundUser = null;
             try
             {
-                foundUser = Logging.Users.Find(ircUser, ServerLogInstance.Id);
-                if (foundUser != null)
+                lock (LoggingLock)
                 {
-                    // we don't want our recipients to modify this and accidentally commit it back to the DB.
-                    var entry = Logging.Entry(foundUser);
-                    entry.State = EntityState.Detached;
+                    foundUser = Logging.Users.Find(ircUser, ServerLogInstance.Id);
+                    if (foundUser != null)
+                    {
+                        // we don't want our recipients to modify this and accidentally commit it back to the DB.
+                        var entry = Logging.Entry(foundUser);
+                        entry.State = EntityState.Detached;
+                    }
                 }
 
             }
