@@ -9,6 +9,7 @@ using System.Threading;
 using System.Text;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Fatty
 {
@@ -51,8 +52,10 @@ namespace Fatty
             [IgnoreDataMember]
             public int PollInterval;
 
+#nullable enable
             [IgnoreDataMember]
             public string? Etag;
+#nullable disable
 
             [OnDeserialized]
             private void DeserializationInitializer(StreamingContext ctx)
@@ -297,12 +300,14 @@ namespace Fatty
                         owningContext.PollInterval = pollInterval;
 
                         var ETagHeader = r.Headers.Single(header => { return header.Name == "ETag"; });
+#nullable enable
                         string? ETag = null;
                         if (ETagHeader is not null)
                         {
                             ETag = (string?)ETagHeader.Value;
                         }
                         owningContext.Etag = ETag;
+#nullable disable
                     }
                     else
                     {

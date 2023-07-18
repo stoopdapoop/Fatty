@@ -12,7 +12,9 @@ namespace Fatty
 {
     class CraigslistModule : FattyModule
     {
-
+        
+        // fields populated by data contract.
+#pragma warning disable 0649
         [DataContract]
         public class CraigslistContextList
         {
@@ -42,8 +44,10 @@ namespace Fatty
             [DataMember(IsRequired = true)]
             public string Category;
 
+#nullable enable
             [DataMember]
             public string? SearchString;
+#nullable disable
 
             [DataMember]
             public int? MaxPrice;
@@ -72,12 +76,15 @@ namespace Fatty
             [DataMember]
             public SearchForSaleRequest.Purveyors? Purveyor;
 
+#nullable enable
             [DataMember]
             public List<SearchForSaleRequest.MotorcycleType>? MotorcycleTypes;
 
-           [DataMember]
-           public List<string>? ExcludedTerms; 
+            [DataMember]
+           public List<string>? ExcludedTerms;
+#nullable disable
         }
+#pragma warning restore 0649
 
         private List<CraigslistContext> ActiveContexts;
 

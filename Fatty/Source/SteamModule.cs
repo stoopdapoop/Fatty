@@ -9,7 +9,8 @@ namespace Fatty
 {
     class SteamModule : FattyModule
     {
-
+        // fields populated by data contract.
+#pragma warning disable 0649
         [DataContract]
         public class SteamConfig 
         {
@@ -79,14 +80,15 @@ namespace Fatty
             
         }
 
+#pragma warning restore 0649
+
         SteamConfig Config;
 
         CancellationTokenSource PollCancellationSource;
                 
         const string APIBaseAddress = "https://api.steampowered.com";
         const string ServerListEndpoint = "IGameServersService/GetServerList/v1/";
-        const string FilterParams = @"gamedir\NeotokyoSource\empty\1\password\0";
-
+        const string FilterParams = @"gamedir\NeotokyoSource\empty\1";
         public override void ChannelInit(ChannelContext channel)
         {
             base.ChannelInit(channel);
@@ -169,13 +171,19 @@ namespace Fatty
                         if (pollResponse.Servers != null && pollResponse.Servers.Count > 0)
                         {
                             int maxPop = 0;
+                            string MaxServerName = "";
                             foreach (var server in pollResponse.Servers)
                             {
+                                if(maxPop < server.PlayerCount)
+                                {
+                                    maxPop = server.PlayerCount;
+                                    MaxServerName = server.ServerName;
+                                }
                                 maxPop = Math.Max(maxPop, server.PlayerCount);
                             }
 
                             reported = true;
-                            OwningChannel.SendChannelMessage($"there are {pollResponse.Servers.Count} populated servers. The highest population is {maxPop}");         
+                            OwningChannel.SendChannelMessage($"there are {pollResponse.Servers.Count} populated servers. The highest population is {maxPop} : {MaxServerName}");         
                         }
                     }
                     if(!reported)
@@ -192,6 +200,7 @@ namespace Fatty
             catch (Exception ex)
             {
                 OwningChannel.SendChannelMessage("Something messed up");
+                Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
             }
 
         }
