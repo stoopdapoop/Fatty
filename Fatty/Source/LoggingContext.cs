@@ -22,6 +22,7 @@ namespace Fatty
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<IrcLogUser>().HasKey(x => new { x.Nick, x.ServerId });
+            modelBuilder.Entity<IrcLogUser>().Property(c => c.Nick).HasColumnType("TEXT COLLATE NOCASE");
         }
     }
 
