@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -60,7 +61,7 @@ namespace Fatty
         private Object LoggingLock;
         private LoggingContext Logging;
         private ServerLog ServerLogInstance;
-        private Dictionary<string,ChannelLog> ChannelLogInstances;
+        private Dictionary<string, ChannelLog> ChannelLogInstances;
 
         [OnDeserialized]
         private void DeserializationInitializer(StreamingContext ctx)
@@ -91,7 +92,7 @@ namespace Fatty
             lock (LoggingLock)
             {
                 ChannelLog JoiningLog;
-                var ChannelQuery = Logging.Channels.AsQueryable().Where( x => x.ChannelName == ircChannel && x.Server == ServerLogInstance);
+                var ChannelQuery = Logging.Channels.AsQueryable().Where(x => x.ChannelName == ircChannel && x.Server == ServerLogInstance);
                 if (ChannelQuery.Count() == 0)
                 {
                     JoiningLog = new ChannelLog();
@@ -106,7 +107,7 @@ namespace Fatty
                 }
                 ChannelLogInstances.TryAdd(ircChannel, JoiningLog);
             }
-            
+
             if (ChannelJoinedEvent != null)
             {
                 foreach (ChannelJoinedDelegate chanDel in ChannelJoinedEvent.GetInvocationList())
@@ -126,23 +127,34 @@ namespace Fatty
         {
             lock (LoggingLock)
             {
-                IrcLogUser FoundUser = Logging.Users.Find(ircUser, ServerLogInstance.Id);
-                if (FoundUser == null)
+                try
                 {
-                    FoundUser = new IrcLogUser(ircUser, ServerLogInstance.Id);
-                    Logging.Users.Add(FoundUser);
-                    // saves later
-                }
+                    IrcLogUser FoundUser = Logging.Users.Find(ircUser, ServerLogInstance.Id);
+                    if (FoundUser == null)
+                    {
+                        FoundUser = new IrcLogUser(ircUser, ServerLogInstance.Id, DateTime.Now);
+                        Logging.Users.Add(FoundUser);
+                        // saves later
+                    }
+                    else
+                    {
+                        FoundUser.LastSeen = DateTime.Now;
+                    }
 
-                var MessageLog = new ChannelMessageLog();
-                MessageLog.Channel = ChannelLogInstances[ircChannel];
-                MessageLog.User = FoundUser;
-                MessageLog.Message = message;
-                //MessageLog.Date = DateTime.Now.ToString("YYYY-MM-DD HH:MM:SS.SSS");
-                MessageLog.Date = DateTime.Now;
-                var entityEntry = Logging.Messages.Add(MessageLog);
-                Logging.SaveChanges();
-                entityEntry.State = EntityState.Detached;
+                    var MessageLog = new ChannelMessageLog();
+                    MessageLog.Channel = ChannelLogInstances[ircChannel];
+                    MessageLog.User = FoundUser;
+                    MessageLog.Message = message;
+                    //MessageLog.Date = DateTime.Now.ToString("YYYY-MM-DD HH:MM:SS.SSS");
+                    MessageLog.Date = DateTime.Now;
+                    var entityEntry = Logging.Messages.Add(MessageLog);
+                    Logging.SaveChanges();
+                    entityEntry.State = EntityState.Detached;
+                }
+                catch (Exception ex)
+                {
+                    Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
+                }
             }
 
             if (ChannelMessageEvent != null)
@@ -167,17 +179,22 @@ namespace Fatty
                 IrcLogUser FoundUser = Logging.Users.Find(ircUser, ServerLogInstance.Id);
                 if (FoundUser == null)
                 {
-                    FoundUser = new IrcLogUser(ircUser, ServerLogInstance.Id);
+                    FoundUser = new IrcLogUser(ircUser, ServerLogInstance.Id, DateTime.Now);
                     Logging.Users.Add(FoundUser);
                     Logging.SaveChanges();
                 }
+                else
+                {
+                    FoundUser.LastSeen = DateTime.Now;
+                    Logging.SaveChanges();
+                }
             }
-            if(UserJoinedEvent != null)
+            if (UserJoinedEvent != null)
             {
                 foreach (UserJoinPartDelegate joinDel in UserJoinedEvent.GetInvocationList())
                 {
                     Debug.Assert(Object.ReferenceEquals(joinDel.Target.GetType(), typeof(ChannelContext)), "Target of ChannelMessageDelegate not of type ChannelContext");
-                    
+
                     ChannelContext DelegateContext = (ChannelContext)joinDel.Target;
 
                     if (DelegateContext.ChannelName == ircChannel)
@@ -193,6 +210,21 @@ namespace Fatty
             OwnerConnection.SendMessage(ircChannel, message);
         }
 
+        public string[] GetConnectedChannelUsers(ChannelContext ircChannel)
+        {
+            try
+            {
+                var result = OwnerConnection.GetChannelUsers(ircChannel);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Fatty.PrintWarningToScreen(ex);
+            }
+
+            return Array.Empty<string>();
+        }
+
         public void SendCapMessage(string cap)
         {
             OwnerConnection.SendCapRequest(cap);
@@ -200,7 +232,7 @@ namespace Fatty
 
         private void InitLogging()
         {
-                lock (LoggingLock)
+            lock (LoggingLock)
             {
                 Fatty.PrintToScreen("Init Logging...");
                 var LoggingFactory = new BloggingContextFactory();
@@ -226,5 +258,31 @@ namespace Fatty
                 }
             }
         }
+
+#nullable enable
+        public IrcLogUser? GetLoggedUserInfo(string ircUser)
+        {
+            IrcLogUser? foundUser = null;
+            try
+            {
+                foundUser = Logging.Users.Find(ircUser, ServerLogInstance.Id);
+                if (foundUser != null)
+                {
+                    // we don't want our recipients to modify this and accidentally commit it back to the DB.
+                    var entry = Logging.Entry(foundUser);
+                    entry.State = EntityState.Detached;
+                }
+
+            }
+            catch (Exception ex)
+            {
+                Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
+                foundUser = null;
+            }
+
+            return foundUser;
+        }
+#nullable disable
+
     }
 }

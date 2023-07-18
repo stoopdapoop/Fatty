@@ -23,12 +23,14 @@ namespace Fatty
         {
             Commands.Add(new UserCommand("Noel", NoelCommand, "returns what noel would say in this situation"));
             Commands.Add(new UserCommand("dpaste", DpasteCommand, "Gets a link to dpaste."));
+            Commands.Add(new UserCommand("seen", SeenCommand, "Reports the last time the user spoke, joined, or parted"));
         }
 
         public override void ListCommands(ref List<string> CommandNames)
         {
             CommandNames.Add("Noel");
             CommandNames.Add("dpaste");
+            CommandNames.Add("seen");
         }
 
         public override void RegisterEvents()
@@ -72,5 +74,39 @@ namespace Fatty
         {
             OwningChannel.SendMessage("https://dpaste.org/", ircUser);
         }
+
+
+        private void SeenCommand(string ircUser, string ircChannel, string message)
+        {
+            bool everSeen = false;
+
+            string[] chunks = message.Split(" ");
+            if(chunks.Length < 2) 
+            {
+                OwningChannel.SendMessage("I need a name", ircUser);
+                return;
+            }
+            string findName = chunks[1];
+#nullable enable
+            var lastSeen = OwningChannel.GetUserLastSeenTime(findName, ircChannel, out everSeen);
+            if (lastSeen == null)
+            {
+                if (!everSeen)
+                {
+                    OwningChannel.SendMessage($"Never seen {findName} before", ircUser);
+                }
+                else
+                {
+                    OwningChannel.SendMessage($"I've seen {findName} before, but not since I started tracking seen time. Sorry :[", ircUser);
+                }
+            }
+#nullable disable
+            else
+            {
+                OwningChannel.SendMessage($"Last seen {findName} on {lastSeen}, though they might be around now...", ircUser);
+            }
+            
+        }
+        
     }
 }

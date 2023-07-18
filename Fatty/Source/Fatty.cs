@@ -94,6 +94,10 @@ namespace Fatty
             PrintToScreen(String.Format(format, args));
         }
 
+        public static void PrintWarningToScreen(Exception ex)
+        {
+            PrintWarningToScreen(ex.Message, ex.StackTrace);
+        }
 
         public static void PrintWarningToScreen(string message, string optionalStack = "")
         {

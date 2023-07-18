@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Fatty;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
@@ -6,6 +8,7 @@ using System.Net.Mail;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Timers;
 
 namespace Fatty
@@ -29,16 +32,36 @@ namespace Fatty
 
         private bool ListenerIsListening = false;
 
+        private bool WaitingOnNames = false;
+        private Object NamesLock = new object();
+        private List<NamePromise> NamePromises = new List<NamePromise>();
+        private EventWaitHandle NamesWaitHandle;
+
         public event PrivateMessageDelegate PrivateMessageEvent;
         public event NoticeDelegate NoticeEvent;
+
+        private class NamePromise
+        {
+            public NamePromise(ChannelContext inContext) { requestingContext = inContext; }
+            public string[] names;
+            public ChannelContext requestingContext;
+            public bool finished = false;
+        }
 
         public IRCConnection(ServerContext context)
         {
             this.Context = context;
         }
 
-        private void SendNickAndUser(string nick, string user)
+#nullable enable
+        private void SendUserInfo(string nick, string user, string? pass)
         {
+            // order defined by rfc
+            if (pass != null)
+            {
+                SendServerMessage($"Pass {pass}");
+            }
+#nullable disable
             SendServerMessage($"NICK {nick}");
             SendServerMessage($"USER {nick} 0 * :{user}");
         }
@@ -89,11 +112,7 @@ namespace Fatty
 
                 // Send user info
                 Fatty.PrintToScreen("Sending user info...");
-                if(Context.ServerAuthPassword != null)
-                {
-                    SendServerMessage($"Pass {Context.ServerAuthPassword}");
-                }
-                SendNickAndUser(Context.Nick, Context.RealName);
+                SendUserInfo(Context.Nick, Context.RealName, Context.ServerAuthPassword);
 
                 foreach( ChannelContext chanContext in Context.Channels)
                 {
@@ -129,6 +148,31 @@ namespace Fatty
             SendServerMessage($"CAP REQ :{cap}");
         }
 
+        public string[] GetChannelUsers(ChannelContext ircChannel)
+        {
+
+            // this work gets picked up by the listener thread when the names results come back
+            lock (NamesLock)
+            {
+                WaitingOnNames = true;
+                Debug.Assert(NamesWaitHandle == null);
+
+                NamesWaitHandle = new EventWaitHandle(false, EventResetMode.AutoReset);
+                NamePromises.Add(new NamePromise(ircChannel));
+                SendServerMessage($"NAMES {ircChannel.ChannelName}");
+            }
+
+            if(NamesWaitHandle.WaitOne(1000))
+            {
+
+            }
+            else
+            {
+
+            }
+            // this is where I left off
+            return Array.Empty<string>();
+        }
         private void SendServerMessage(string format, params object[] args)
         {
             SendServerMessage(String.Format(format, args));
@@ -273,6 +317,8 @@ namespace Fatty
                 HandlePing(commandTokens);
             }
 
+
+
             switch (commandTokens[1])
             {
                 // welcome messages
@@ -299,9 +345,10 @@ namespace Fatty
                         HandleInvite(commandTokens);
                         break;
                     }
+                // RPL_NAMREPLY
                 case "353":
                     {
-                        HandleChannelJoin(commandTokens);
+                        HandleNameList(commandTokens);
                         break;
                     }
                 case "432":
@@ -445,9 +492,9 @@ namespace Fatty
             }
         }
 
-        private void HandleChannelJoin(string[] tokens)
+        private void HandleChannelJoin(string channel)
         {
-            Context.HandleChannelJoin(tokens[4]);
+            Context.HandleChannelJoin(channel);
         }
 
         private void HandleUserJoinPart(string[] tokens)
@@ -473,7 +520,17 @@ namespace Fatty
                     break;
             }
 
-            if (joiningUser != Context.Nick.ToLower())
+            if (joiningUser.ToLower() == Context.Nick.ToLower())
+            {
+                if (type == JoinType.Join)
+                {
+                    // this handleuserjoinpart function is doing too many things, should refactor this at some point.
+                    int channelStartIndex = tokens[2][0] == ':' ? 1 : 0;
+                    string joiningChannel = tokens[2].Substring(channelStartIndex);
+                    HandleChannelJoin(joiningChannel);
+                }
+            }
+            else
             {
                 Context.HandleUserJoinChannel(joiningUser, tokens[2], type);
             }
@@ -483,6 +540,17 @@ namespace Fatty
         {
             string pingHash = pingTokens[1].Substring(1);
             SendServerMessage("PONG " + pingHash);
+        }
+
+        private void HandleNameList(string[] commandTokens)
+        {
+            lock(NamesLock)
+            {
+                if (WaitingOnNames)
+                {
+
+                }
+            }
         }
 
         private void OnWelcomeComplete()

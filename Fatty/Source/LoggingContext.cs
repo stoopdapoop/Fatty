@@ -33,10 +33,13 @@ namespace Fatty
         public int ServerId { get; set; }
         public ServerLog Server { get; set; }
 
-        public IrcLogUser(string nick, int serverId)
+        public DateTime? LastSeen { get; set; }
+
+        public IrcLogUser(string nick, int serverId, DateTime? lastSeen)
         {
             Nick = nick;
             ServerId = serverId;
+            LastSeen = lastSeen;
         }
     }
 

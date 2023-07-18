@@ -146,6 +146,38 @@ namespace Fatty
             Server.SendCapMessage(cap);
         }
 
+#nullable enable
+        public DateTime? GetUserLastSeenTime(string user, string ircChannel, out bool everSeen)
+        {
+            everSeen = false;
+            Debug.Assert(ircChannel == this.ChannelName, "Inconsistent ChannelName");
+
+
+            //string[] connectedUsers = Server.GetConnectedChannelUsers(this);
+
+            //foreach(string connectedUser in connectedUsers)
+            //{
+            //    if (connectedUser == user)
+            //    {
+            //        return DateTime.Now;
+            //    }
+            //}
+
+            IrcLogUser? foundUser = Server.GetLoggedUserInfo(user);
+            if (foundUser != null) 
+            {
+                everSeen = true;
+                // this value was added after table creation and I didn't fix up old values
+                if(foundUser.LastSeen != null)
+                {
+                    return foundUser.LastSeen;
+                }
+            }
+
+            return null;
+        }
+#nullable disable
+
         private void HandleChannelMessage(string ircUser, string ircChannel, string message)
         {
             if (message.StartsWith(CommandPrefix))

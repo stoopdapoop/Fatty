@@ -83,8 +83,6 @@ namespace Fatty
 #pragma warning restore 0649
 
         SteamConfig Config;
-
-        CancellationTokenSource PollCancellationSource;
                 
         const string APIBaseAddress = "https://api.steampowered.com";
         const string ServerListEndpoint = "IGameServersService/GetServerList/v1/";
