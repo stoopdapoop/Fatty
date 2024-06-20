@@ -1,15 +1,10 @@
-﻿using Fatty;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Net;
-using System.Net.Mail;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Threading;
-using System.Threading.Tasks;
-using System.Timers;
 
 namespace Fatty
 {
@@ -38,7 +33,7 @@ namespace Fatty
         private EventWaitHandle NamesWaitHandle;
 
         public event PrivateMessageDelegate PrivateMessageEvent;
-        public event NoticeDelegate NoticeEvent;
+        public event NoticeWhisperDelegate NoticeEvent;
 
         private class NamePromise
         {
@@ -62,8 +57,21 @@ namespace Fatty
                 SendServerMessage($"Pass {pass}");
             }
 #nullable disable
+            if (Context.ServerCaps != null)
+            {
+                SendServerMessage("CAP LS 302");
+            }
             SendServerMessage($"NICK {nick}");
             SendServerMessage($"USER {nick} 0 * :{user}");
+            if (Context.ServerCaps != null)
+            {
+                foreach (string reqCap in Context.ServerCaps)
+                {
+                    SendCapRequest(reqCap);
+                }
+                SendServerMessage("CAP END");
+            }
+
         }
 
         public void ConnectToServer()
@@ -137,9 +145,9 @@ namespace Fatty
             SendServerMessage(outputMessage);
         }
 
-        public void SendNotice(string sendTo, string message)
+        public void SendNotice(string sendTo, string message, NoticeType type = NoticeType.NOTICE)
         {
-            string outputMessage = String.Format("NOTICE {0} :{1}", sendTo, message);
+            string outputMessage = $"{type.ToString()} {sendTo} :{message}";
             SendServerMessage(outputMessage);
         }
 
@@ -230,54 +238,62 @@ namespace Fatty
             {
                 Fatty.PrintWarningToScreen($"Listener Exception: {e.Message}", e.StackTrace);
             }
-
-            Fatty.PrintToScreen("Listener Died", ConsoleColor.Yellow);
+            
+            Fatty.PrintToScreen($"Listener Died ({Context.ServerName})", ConsoleColor.Yellow);
             ListenerIsListening = false;
         }
 
         // todo, use n'th index of space for substring instead of token join
         private void PrintServerMessage(string message)
         {
-            if (message.StartsWith("PING"))
-                return;
-
-            string[] messageTokens = message.Split(' ');
-
-            if (messageTokens[1] == "PRIVMSG")
+            try
             {
-                string talkingUser = messageTokens[0].Substring(0, messageTokens[0].IndexOf('!')).TrimStart(':');
-                string userMessage = String.Join(' ', messageTokens, 3, messageTokens.Length - 3);
-                // unsure if this check is needed but as far as I can tell all messages start with this colon, but it's not explicity specified in the RFC
-                if (userMessage[0] == ':')
+                ServerMessage serverMessage = new ServerMessage(message);
+
+                if (serverMessage.Command == "PING")
+                    return;
+
+                if (serverMessage.Command == "PRIVMSG")
                 {
-                    userMessage = userMessage.Substring(1, userMessage.Length - 1);
+                    string talkingUser = serverMessage.Prefix.Substring(0, serverMessage.Prefix.IndexOf('!')).TrimStart(':');
+                    string userMessage = serverMessage.Params.Substring(serverMessage.Params.IndexOf(":") + 1);
+                    string channelName = serverMessage.Params.Substring(0, serverMessage.Params.IndexOf(":") - 1);  
+
+                    Fatty.PrintToScreen($"{channelName}<{talkingUser}>{userMessage}", ConsoleColor.DarkCyan);
                 }
+                else if (serverMessage.Command.Length == 3 && Char.IsDigit(serverMessage.Command[0]))
+                {
+                    string messagetext = serverMessage.Params.Substring(serverMessage.Params.IndexOf(":") + 1);
+                    Fatty.PrintToScreen($"{Context.ServerName}:{serverMessage.Command}:{messagetext}", ConsoleColor.White);
+                }
+                else if (serverMessage.Command == "NOTICE" || serverMessage.Command == "WHISPER")
+                {
+                    string noticeSender = serverMessage.Prefix;
+                    int maskDelimit = serverMessage.Prefix.IndexOf('!');
+                    if (maskDelimit > -1) 
+                    {
+                        noticeSender = serverMessage.Prefix.Substring(0, maskDelimit);
+                    }
+                    string noticeMessage = serverMessage.Params.Substring(serverMessage.Params.IndexOf(":"));
+                    Fatty.PrintToScreen($"{noticeSender}:{serverMessage.Command} {noticeMessage}", ConsoleColor.DarkRed);
+                }
+                else if (serverMessage.Command == "JOIN" || serverMessage.Command == "PART")
+                {
+                    bool bIsJoin = serverMessage.Command == "JOIN";
+                    int startIndex = serverMessage.Prefix[0] == ':' ? 1 : 0;
+                    int endIndex = serverMessage.Prefix.IndexOf('!');
+                    string joiningUser = serverMessage.Prefix.Substring(startIndex, endIndex - startIndex);
 
-                Fatty.PrintToScreen(String.Format("{0}<{1}>{2}", messageTokens[2], talkingUser, userMessage), ConsoleColor.DarkCyan);
+                    Fatty.PrintToScreen($"{serverMessage.Params} <{joiningUser}> {serverMessage.Command}", bIsJoin ? ConsoleColor.Cyan : ConsoleColor.DarkYellow);
+                }
+                else
+                {
+                    Fatty.PrintToScreen(message);
+                }
             }
-            else if (messageTokens[1].Length == 3 && Char.IsDigit(messageTokens[1][0]))
-            {
-                string serverMessage = String.Join(' ', messageTokens, 3, messageTokens.Length - 3).TrimStart(':');
-                Fatty.PrintToScreen(String.Format("{0}:{1}:{2}", Context.ServerName, messageTokens[1], serverMessage), ConsoleColor.White);
-            }
-            else if(messageTokens[1] == "NOTICE")
-            {
-                string noticeSender = messageTokens[0];
-                string noticeMessage = String.Join(' ', messageTokens, 3, messageTokens.Length - 3).TrimStart(':');
-                Fatty.PrintToScreen(String.Format("{0}:NOTICE {1}", noticeSender, noticeMessage), ConsoleColor.DarkRed);
-            }
-            else if(messageTokens[1] == "JOIN" || messageTokens[1] == "PART")
-            {
-                bool bIsJoin = messageTokens[1] == "JOIN";
-                int startIndex = messageTokens[0][0] == ':' ? 1 : 0;
-                int endIndex = messageTokens[0].IndexOf('!');
-                string joiningUser = messageTokens[0].Substring(startIndex, endIndex - startIndex);
-
-                Fatty.PrintToScreen($"{messageTokens[2]}<{joiningUser}> {messageTokens[1]}", bIsJoin ? ConsoleColor.Cyan : ConsoleColor.DarkYellow);
-            }
-            else
-            {
-                Fatty.PrintToScreen(message);
+            catch (Exception ex) 
+            { 
+                Fatty.PrintWarningToScreen($"{ex.Message} : While trying to display {message}", ex.StackTrace);
             }
         }
 
@@ -306,76 +322,118 @@ namespace Fatty
             SendServerMessage("PART {0} :{1}", channelName, Context.QuitMessage);
         }
 
+        public class ServerMessage
+        {
+            public Dictionary<string, string> Tags;
+            public string Prefix;
+            public string Command;
+            public string Params;
+            public string CompleteMessage;
+
+            public ServerMessage(string rawMessage)
+            {
+                // <message> ::= ['@' <tags> <SPACE>] [':' <prefix> <SPACE> ] <command> [params] <crlf>
+                CompleteMessage = rawMessage;
+
+                try
+                {
+                    int nextStart = 0;
+                    bool HasTags = rawMessage[0] == '@';
+                    if (HasTags)
+                    {
+                        Tags = new Dictionary<string, string>();
+                        int tagEnd = rawMessage.IndexOf(' ');
+
+                        string tags = rawMessage.Substring(1, tagEnd - 1);
+                        string[] tagPairs = tags.Split(';');
+                        foreach (string tagPair in tagPairs)
+                        {
+                            string[] TagElements = tagPair.Split('=');
+                            Tags[TagElements[0]] = TagElements[1];
+                        }
+                        nextStart = tagEnd + 1;
+                    }
+
+                    
+                    string nextSection = rawMessage.Substring(nextStart);
+                    if (nextSection[0] == ':')
+                    {
+                        nextStart = nextSection.IndexOf(' ') + 1;
+                        Prefix = nextSection.Substring(1, nextStart - 2);
+
+                        nextSection = nextSection.Substring(nextStart);
+                    }
+
+                    char[] escapes = { ' ', '\r', '\n' };
+                    nextStart = nextSection.IndexOfAny(escapes);
+
+                    Command = nextSection.Substring(0, nextStart);
+
+                    Params = nextSection.Substring(nextStart + 1);
+                }
+                catch (Exception ex)
+                {
+                    Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
+                }
+            }
+        }
+
         private void DispatchMessageEvents(string response)
         {
-            string[] commandTokens = response.Split(' ');
-            if (commandTokens[0][0] == ':')
-                commandTokens[0] = commandTokens[0].Remove(0, 1);
+            ServerMessage responseMessage = new ServerMessage(response);
 
-            if (commandTokens[0] == "PING")
+            switch (responseMessage.Command)
             {
-                HandlePing(commandTokens);
-            }
-
-
-
-            switch (commandTokens[1])
-            {
-                // welcome messages
+                //// welcome messages
                 case "001":
                 case "002":
                 case "003":
                 case "004":
-                    {
-                        HandleWelcomeMessage(commandTokens);
-                        break;
-                    }
+                    HandleWelcomeMessage(responseMessage);
+                    break;
+                case "PING":
+                    HandlePing(responseMessage);
+                    break;
                 case "PRIVMSG":
-                    {
-                        HandlePrivMsg(commandTokens, response);
-                        break;
-                    }
+                    HandlePrivMsg(responseMessage);
+                    break;
                 case "NOTICE":
-                    {
-                        HandleNotice(commandTokens);
-                        break;
-                    }
+                case "WHISPER":
+                    HandleWhisperNotice(responseMessage);
+                    break;
                 case "INVITE":
-                    {
-                        HandleInvite(commandTokens);
-                        break;
-                    }
-                // RPL_NAMREPLY
-                case "353":
-                    {
-                        HandleNameList(commandTokens);
-                        break;
-                    }
+                    HandleInvite(responseMessage);
+                    break;
+                //// RPL_NAMREPLY
+                //case "353":
+                //    {
+                //        HandleNameList(commandTokens);
+                //        break;
+                //    }
                 case "432":
-                    {
-                        SendMessage("nickserv", "IDENTIFY {Context.NickAuthPassword}");
-                        break;
-                    }
+                    SendMessage("nickserv", $"IDENTIFY {Context.NickAuthPassword}");
+                    break;
                 case "JOIN":
                 case "PART":
                     {
-                        HandleUserJoinPart(commandTokens);
+                        HandleUserJoinPart(responseMessage);
                         break;
                     }
             }
         }
 
-        private void HandleWelcomeMessage(string[] tokens)
+        private void HandleWelcomeMessage(ServerMessage message)
         {
-            int welcomeID =  int.Parse(tokens[1]);
+            int welcomeID =  int.Parse(message.Command);
             IRCWelcomeProgress.NotifyOfMessage(welcomeID);
         }
 
-        private void HandlePrivMsg(string[] tokens, string originalMessage)
+        private void HandlePrivMsg(ServerMessage message)
         {
-            string userSender = tokens[0].Substring(0, tokens[0].IndexOf('!'));
-            string messageTo = tokens[2];
-            string chatMessage = originalMessage.Substring(1 + originalMessage.IndexOf(':', 1));
+            string userSender = message.Prefix.Substring(0, message.Prefix.IndexOf('!'));
+            int DelimPos = message.Params.IndexOf(':');
+            string messageTo = message.Params.Substring(0, DelimPos - 1);
+            string chatMessage = message.Params.Substring(DelimPos + 1);
             
             if (messageTo[0] == '#' || messageTo[0] == '&')
             {
@@ -385,7 +443,7 @@ namespace Fatty
             {
                 string trimmedMessage = chatMessage.Trim('\u0001');
                 string[] trimmedChunks = trimmedMessage.Split();
-                switch(trimmedChunks[0])
+                switch (trimmedChunks[0])
                 {
                     case "PING":
                         SendNotice(userSender, String.Format("\u0001PING {0} PONG\u0001", trimmedChunks[1]));
@@ -416,35 +474,41 @@ namespace Fatty
             }
         }
 
-        private void HandleNotice(string[] tokens)
+        private void HandleWhisperNotice(ServerMessage serverMessage)
         {
             bool bAdminCommand = false;
-            try
+            // if notice is from a user and not the server
+            int maskDelimit = serverMessage.Prefix.IndexOf('!');
+            if (maskDelimit > -1)
             {
-                if (IsAuthenticatedUser(tokens[0]))
+                string userSender = serverMessage.Prefix.Substring(0, maskDelimit);
+                try
                 {
-                    if (tokens.Length < 5)
+                    if (IsAuthenticatedUser(serverMessage.Prefix))
                     {
-                        string userSender = tokens[0].Substring(0, tokens[0].IndexOf('!'));
-                        SendMessage(userSender, "Not enough args");
-                    }
-                    else
-                    {
-                        string messageCommand = tokens[3].TrimStart(':').ToLower();
-                        switch (messageCommand)
+                        // first word is command, the rest is argument.
+                        int DelimPos = serverMessage.Params.IndexOf(':');
+                        string message = serverMessage.Params.Substring(DelimPos + 1);
+                        int commandDelimitPos = message.IndexOf(' ');
+                        string command = message.Substring(0, commandDelimitPos).ToLower();
+                        string args = message.Substring(commandDelimitPos + 1);
+
+                        switch (command)
                         {
                             case "join":
-                                RuntimeJoinChannel(tokens[4]);
+                                RuntimeJoinChannel(args);
                                 bAdminCommand = true;
                                 break;
                             case "part":
                             case "leave":
-                                PartChannel(tokens[4]);
+                                PartChannel(args);
                                 bAdminCommand = true;
                                 break;
                             case "say":
-                                string sendTo = tokens[4];
-                                SendMessage(sendTo, String.Join(" ", tokens, 5, tokens.Length - 5)); ;
+                                int argDelim = args.IndexOf(' ');
+                                string sendTo = args.Substring(0, argDelim);
+                                string messageToSend = args.Substring(argDelim + 1);
+                                SendMessage(sendTo, messageToSend); 
                                 bAdminCommand = true;
                                 break;
                             case "quit":
@@ -453,42 +517,33 @@ namespace Fatty
                                 bAdminCommand = true;
                                 break;
                         }
+
+                    }
+
+                    if (NoticeEvent != null && !bAdminCommand)
+                    {
+                        string noticeMessage = serverMessage.Params.Substring(serverMessage.Params.IndexOf(':') + 1);
+                        NoticeType type = serverMessage.Command == "NOTICE" ? NoticeType.NOTICE : NoticeType.WHISPER;
+                        NoticeEvent(type, userSender, noticeMessage);
                     }
                 }
-            }
-            catch (System.Exception ex)
-            {
-                string userSender = tokens[0].Substring(0, tokens[0].IndexOf('!'));
-                SendMessage(userSender, "something broke");
-                Thread.Sleep(500);
-                SendMessage(userSender, ex.Message.Substring(0, 400));
+                catch (System.Exception ex)
+                {
+                    SendMessage(userSender, "something broke");
+                    SendMessage(userSender, ex.Message.Substring(0, Math.Min(400, ex.Message.Length)));
 
-                Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
-            }
+                    Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
+                }
 
-            if (NoticeEvent != null && !bAdminCommand)
-            {
-                string userSender = tokens[0].Substring(0, tokens[0].IndexOf('!'));
-                string noticeMessage = tokens[3].TrimStart(':');
-                NoticeEvent(userSender, noticeMessage);
             }
         }
 
-        private void HandleInvite(string[] tokens)
+        private void HandleInvite(ServerMessage message)
         {
-            bool ChannelJoined = false;
-            if (IsAuthenticatedUser(tokens[0]))
+            if (IsAuthenticatedUser(message.Prefix))
             {
-                JoinChannel(tokens[3].TrimStart(':'));
-                ChannelJoined = true;
-            }
-
-            if (!ChannelJoined)
-            {
-                int startIndex = tokens[0][0] == ':' ? 1 : 0;
-                int endIndex = tokens[0].IndexOf('!');
-                string SendingTo = tokens[0].Substring(startIndex, endIndex - startIndex);
-                SendMessage(SendingTo, "Nope, Sorry");
+                string channelName = message.Params.Substring(message.Params.IndexOf(':') + 1);
+                JoinChannel(channelName);
             }
         }
 
@@ -497,16 +552,16 @@ namespace Fatty
             Context.HandleChannelJoin(channel);
         }
 
-        private void HandleUserJoinPart(string[] tokens)
+        private void HandleUserJoinPart(ServerMessage serverMessage)
         {
-            int startIndex = tokens[0][0] == ':' ? 1 : 0;
-            int endIndex = tokens[0].IndexOf('!');
+            int startIndex = serverMessage.Prefix[0] == ':' ? 1 : 0;
+            int endIndex = serverMessage.Prefix.IndexOf('!');
 
-            string joiningUser = tokens[0].Substring(startIndex, endIndex - startIndex);
+            string joiningUser = serverMessage.Prefix.Substring(startIndex, endIndex - startIndex);
 
             JoinType type = JoinType.Invalid;
             
-            switch(tokens[1])
+            switch(serverMessage.Command)
             {
                 case "JOIN":
                     type = JoinType.Join;
@@ -525,21 +580,20 @@ namespace Fatty
                 if (type == JoinType.Join)
                 {
                     // this handleuserjoinpart function is doing too many things, should refactor this at some point.
-                    int channelStartIndex = tokens[2][0] == ':' ? 1 : 0;
-                    string joiningChannel = tokens[2].Substring(channelStartIndex);
+                    int channelStartIndex = serverMessage.Params[0] == ':' ? 1 : 0;
+                    string joiningChannel = serverMessage.Params.Substring(channelStartIndex);
                     HandleChannelJoin(joiningChannel);
                 }
             }
             else
             {
-                Context.HandleUserJoinChannel(joiningUser, tokens[2], type);
+                Context.HandleUserJoinChannel(joiningUser, serverMessage.Params, type);
             }
         }
 
-        private void HandlePing(string[] pingTokens)
+        private void HandlePing(ServerMessage response)
         {
-            string pingHash = pingTokens[1].Substring(1);
-            SendServerMessage("PONG " + pingHash);
+            SendServerMessage("PONG " + response.Params.Substring(1));
         }
 
         private void HandleNameList(string[] commandTokens)

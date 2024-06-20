@@ -7,6 +7,12 @@
         Invalid
     }
 
+    public enum NoticeType
+    {
+        NOTICE,
+        WHISPER
+    }
+
     public delegate void CommandDelegate(string ircUser, string ircChannel, string message);
     public delegate void PluginChannelMessageDelegate(string ircUser, string message);
     public delegate void UserJoinPartDelegate(string ircUser, string ircChannel, JoinType type);
@@ -24,6 +30,6 @@
     public delegate void NickChangeMessageDelegate(string UserOldNick, string UserNewNick);
     public delegate void KickMessageDelegate(string ircChannel, string userKicker, string userKicked, string kickMessage);
     public delegate void QuitMessageDelegate(string userQuit, string quitMessage);
-    public delegate void NoticeDelegate(string ircUser, string message);
+    public delegate void NoticeWhisperDelegate(NoticeType type, string ircUser, string message);
     public delegate void ServerWelcome(int messageID);
 }

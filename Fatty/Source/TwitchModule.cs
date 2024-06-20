@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
+using System.Web;
 
 namespace Fatty
 {
@@ -8,12 +8,12 @@ namespace Fatty
     {
         public override void RegisterAvailableCommands(ref List<UserCommand> Commands)
         {
-            
+            Commands.Add(new UserCommand("GenTwitchAuthURL", GenTwitchAuthURL, "Generates a twitch Oath url for fatty, Params are {RedirectURI}"));
         }
 
         public override void ListCommands(ref List<string> CommandNames)
         {
-            
+            CommandNames.Add("GenTwitchAuthURL");
         }
 
         public override void ChannelInit(ChannelContext channel)
@@ -32,15 +32,19 @@ namespace Fatty
 
         private void OnChannelJoined(string ircChannel)
         {
-            // todo: implement system for handling per-server, per-channel, and per api endpoint data.
-            OwningChannel.SendCapMessage(@"twitch.tv/membership");
-            OwningChannel.SendCapMessage(@"twitch.tv/commands");
-            //OwningChannel.SendCapMessage(@"twitch.tv/tags");
         }
 
         private void OnUserJoined(string ircUser, string ircChannel, JoinType type)
         {
 
         }
+
+        private void GenTwitchAuthURL(string ircUser, string ircChannel, string message)
+        {
+            string encoded = HttpUtility.UrlEncode("scope=chat:read+chat:edit+whispers:read+whispers:edit+channel:moderate");
+            Fatty.PrintToScreen(encoded, ConsoleColor.Magenta);
+        
+        }
+
     }
 }

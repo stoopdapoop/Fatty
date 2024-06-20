@@ -103,7 +103,7 @@ namespace Fatty
 #nullable disable
             else
             {
-                OwningChannel.SendMessage($"Last seen {findName} on {lastSeen}, though they might be around now...", ircUser);
+                OwningChannel.SendMessage($"Last seen {findName} in {ircChannel} on {lastSeen}, though they might be here now...", ircUser);
             }
             
         }

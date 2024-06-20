@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Query;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -37,6 +36,9 @@ namespace Fatty
 
         [DataMember]
         public string ServerAuthPassword { get; private set; }
+
+        [DataMember]
+        public List<string> ServerCaps { get; private set; }
 
         [DataMember]
         public List<ChannelContext> Channels { get; private set; }

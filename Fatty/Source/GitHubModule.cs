@@ -1,15 +1,14 @@
-﻿using RestSharp;
+﻿using Microsoft.EntityFrameworkCore;
+using RestSharp;
 using RestSharp.Authenticators;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
-using System.Timers;
-using System.Threading;
 using System.Text;
-using System.Linq;
-using Microsoft.EntityFrameworkCore;
-using System.Diagnostics.CodeAnalysis;
+using System.Threading;
+using System.Timers;
 
 namespace Fatty
 {
