@@ -7,8 +7,10 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Timers;
+using static Fatty.GitHubModule;
 
 namespace Fatty
 {
@@ -77,7 +79,7 @@ namespace Fatty
 
             [DataMember(Name = "payload")]
             public GitHubPayload Payload;
-            
+
             [DataMember(Name = "created_at")]
             public DateTime CreatedDateTime;
         }
@@ -122,7 +124,7 @@ namespace Fatty
 
             [DataMember(Name = "comment")]
             public GitHubComment Comment;
-            
+
             [DataMember(Name = "ref_type")]
             public string RefType;
 
@@ -200,7 +202,7 @@ namespace Fatty
 
             [DataMember(Name = "page_name")]
             public string PageName;
-            
+
             [DataMember(Name = "title")]
             public string Title;
 
@@ -209,7 +211,7 @@ namespace Fatty
 
             [DataMember(Name = "sha")]
             public string PageHash;
-            
+
         }
 
         #endregion
@@ -245,21 +247,23 @@ namespace Fatty
             GitHubQueryScheduler.InitScheduler();
         }
 
+
         public override void RegisterAvailableCommands(ref List<UserCommand> Commands)
         {
-            
+            Commands.Add(new UserCommand("ghlimit", GitHubLimitCommand, "Checks API endpoint Limits"));
         }
 
         public override void ListCommands(ref List<string> CommandNames)
         {
-            
+            CommandNames.Add("ghlimit");
         }
 
         public override void ChannelInit(ChannelContext channel)
         {
             base.ChannelInit(channel);
 
-            Action<IRestResponse, GitHubContext> FirstResponseCallback = (r, c) => {
+            Action<IRestResponse, GitHubContext> FirstResponseCallback = (r, c) =>
+            {
                 if (r.Request is BatchedRequest)
                 {
                     BatchedRequest owningRequest = (BatchedRequest)r.Request;
@@ -273,9 +277,9 @@ namespace Fatty
                         {
                             owningContext.LastSeen = LatestEvents[0].CreatedDateTime;
 
-                            foreach(GitHubEvent evnt in LatestEvents)
+                            foreach (GitHubEvent evnt in LatestEvents)
                             {
-                                if(evnt.EventType == "GollumEvent")
+                                if (evnt.EventType == "GollumEvent")
                                 {
                                     foreach (GitHubPage page in evnt.Payload.Pages)
                                     {
@@ -321,10 +325,10 @@ namespace Fatty
                 }
             };
 
-            GitHubContextListing  contextListing = FattyHelpers.DeserializeFromPath<GitHubContextListing>("GitHub.cfg");
+            GitHubContextListing contextListing = FattyHelpers.DeserializeFromPath<GitHubContextListing>("GitHub.cfg");
 
             // only care about channels that this channel is looking at
-            foreach(GitHubContext ghContext in contextListing.AllContexts)
+            foreach (GitHubContext ghContext in contextListing.AllContexts)
             {
                 if (ghContext.ServerName == OwningChannel.ServerName && ghContext.ChannelName == OwningChannel.ChannelName)
                 {
@@ -347,12 +351,13 @@ namespace Fatty
 
         void PollTimerElapsed(object sender, ElapsedEventArgs e)
         {
-            Action<IRestResponse, GitHubContext> PollEventsCallback = (r, c) => {
+            Action<IRestResponse, GitHubContext> PollEventsCallback = (r, c) =>
+            {
                 if (r.Request is BatchedRequest)
                 {
                     BatchedRequest owningRequest = (BatchedRequest)r.Request;
                     GitHubContext owningContext = c;
-                    
+
                     if (r.IsSuccessful && owningContext != null)
                     {
                         List<GitHubEvent> LatestEvents = FattyHelpers.DeserializeFromJsonString<List<GitHubEvent>>(r.Content, SerializerSettings);
@@ -401,7 +406,7 @@ namespace Fatty
                     }
                 }
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
                 Fatty.PrintWarningToScreen($"Github Issue: {ex.Message}", Environment.StackTrace);
             }
@@ -424,7 +429,7 @@ namespace Fatty
 
         bool ShouldReportEvent(GitHubEvent evnt, GitHubContext context)
         {
-            
+
             return true;
         }
 
@@ -449,7 +454,7 @@ namespace Fatty
 
         string FormatEventString(GitHubEvent evnt, GitHubContext context)
         {
-            switch(evnt.EventType)
+            switch (evnt.EventType)
             {
                 case "PushEvent":
                     return FormatPushEventString(evnt);
@@ -494,7 +499,7 @@ namespace Fatty
             {
                 string commitURL = $"https://www.github.com/{evnt.Repo.RepoName}/commit/{evnt.Payload.Commits[i].Hash.Substring(0, 8)}";
                 messageAccumulator.Append($"\"{evnt.Payload.Commits[i].Message}\" - {commitURL}");
-                if(i != commitCount - 1)
+                if (i != commitCount - 1)
                 {
                     messageAccumulator.Append(" || ");
                 }
@@ -538,6 +543,65 @@ namespace Fatty
             return ReturnString;
         }
 
+        public void GitHubLimitCommand(string ircUser, string ircChannel, string message)
+        {
+            GitHubContext firstContext = ActiveChannelContexts[0];
+            if (firstContext != null)
+            {
+                RestClient client = new RestClient("https://api.github.com");
+                var authen = new JwtAuthenticator(firstContext.AccessToken);
+                client.Authenticator = authen;
+
+                BatchedRequest request = new BatchedRequest("rate_limit");
+
+                var response = client.Execute(request);
+                if (response.IsSuccessful)
+                {
+                    List<string> LimitStrings = new List<string>();
+                    foreach (var item in response.Headers)
+                    {
+                        if (item.Name.Contains("limit", StringComparison.OrdinalIgnoreCase))
+                        {
+                            try
+                            {
+                                string itemName = item.Name;
+                                string itemValue = (string)item.Value;
+                                if (item.Name == "X-RateLimit-Reset")
+                                {
+                                    long unixTime = Convert.ToInt64(itemValue);
+                                    DateTimeOffset dateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(unixTime);
+                                    DateTime dateTime = dateTimeOffset.LocalDateTime;
+                                    itemValue = dateTime.ToString();
+                                }
+                                string limitEntry = $"{itemName}={itemValue}";
+                                LimitStrings.Add(limitEntry);
+                            }
+                            catch (Exception ex)
+                            {
+                                Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
+                            }
+                        }
+                    }
+                    if (LimitStrings.Count > 0)
+                    {
+                        string limits = string.Join(" - ", LimitStrings);
+                        limits = limits.TrimEnd(new char[] { ' ', '-' });
+                        OwningChannel.SendChannelMessage(limits);
+                    }
+                    else
+                    {
+                        OwningChannel.SendChannelMessage("No limit headers found");
+                    }
+                }
+                else
+                {
+                    OwningChannel.SendChannelMessage("Failed, sry");
+                }
+
+            }
+        }
+
+
         static public class GitHubQueryScheduler
         {
             private static Mutex mut = new Mutex();
@@ -557,14 +621,14 @@ namespace Fatty
                     }
                 }
             }
-            public static void ScheduleQuery(GitHubContext context, Action<IRestResponse, GitHubContext> callback) 
-            { 
-                lock (mut) 
+            public static void ScheduleQuery(GitHubContext context, Action<IRestResponse, GitHubContext> callback)
+            {
+                lock (mut)
                 {
                     // basically shit-hashing based on relevant data
                     // don't change without also fixing access token assumption in execute queries
                     string mapKey = context.ProjectEndpoint + context.AccessToken;
-                    List < (GitHubContext, Action<IRestResponse, GitHubContext>)> current;
+                    List<(GitHubContext, Action<IRestResponse, GitHubContext>)> current;
                     if (!GithubQueue.TryGetValue(mapKey, out current))
                     {
                         var newList = new List<(GitHubContext, Action<IRestResponse, GitHubContext>)>();
@@ -587,7 +651,7 @@ namespace Fatty
                         BatchedRequest owningRequest = (BatchedRequest)r.Request;
                         var listeners = owningRequest.Listeners;
 
-                        foreach(var listener in listeners)
+                        foreach (var listener in listeners)
                         {
                             listener.Item2.Invoke(r, listener.Item1);
                         }
