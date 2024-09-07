@@ -437,7 +437,7 @@ namespace Fatty
             
             if (messageTo[0] == '#' || messageTo[0] == '&')
             {
-                Context.HandleServerMessage(userSender, messageTo, chatMessage);
+                Context.HandleServerMessage(message.Tags, userSender, messageTo, chatMessage);
             }
             else if (chatMessage.StartsWith('\u0001') && chatMessage.EndsWith('\u0001'))
             {

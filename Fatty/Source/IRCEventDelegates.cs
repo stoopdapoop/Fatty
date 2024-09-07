@@ -1,4 +1,6 @@
-﻿namespace Fatty
+﻿using System.Collections.Generic;
+
+namespace Fatty
 {
     public enum JoinType
     {
@@ -14,11 +16,11 @@
     }
 
     public delegate void CommandDelegate(string ircUser, string ircChannel, string message);
-    public delegate void PluginChannelMessageDelegate(string ircUser, string message);
+    public delegate void PluginChannelMessageDelegate(Dictionary<string, string>? tags, string ircUser, string message);
     public delegate void UserJoinPartDelegate(string ircUser, string ircChannel, JoinType type);
     public delegate void PluginChannelJoinedDelegate(string ircChannel);
     public delegate void ChannelJoinedDelegate(string ircChannel);
-    public delegate void ChannelMessageDelegate(string ircUser, string ircChannel, string message);
+    public delegate void ChannelMessageDelegate(Dictionary<string, string>? tags, string ircUser, string ircChannel, string message);
     public delegate void PrivateMessageDelegate(string ircUser, string message);
     public delegate void TopicSetDelgate(string ircChannel, string ircTopic);
     public delegate void TopicOwnerMessageDelegate(string ircChannel, string ircUser, string topicDate);

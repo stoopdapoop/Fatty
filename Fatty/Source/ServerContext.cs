@@ -125,7 +125,7 @@ namespace Fatty
             }
         }
 
-        public void HandleServerMessage(string ircUser, string ircChannel, string message)
+        public void HandleServerMessage(Dictionary<string, string>? tags, string ircUser, string ircChannel, string message)
         {
             lock (LoggingLock)
             {
@@ -168,7 +168,7 @@ namespace Fatty
                     ChannelContext DelegateContext = (ChannelContext)chanDel.Target;
                     if (DelegateContext.ChannelName == ircChannel)
                     {
-                        chanDel(ircUser, ircChannel, message);
+                        chanDel(tags, ircUser, ircChannel, message);
                     }
                 }
             }

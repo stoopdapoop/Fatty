@@ -177,7 +177,7 @@ namespace Fatty
         }
 #nullable disable
 
-        private void HandleChannelMessage(string ircUser, string ircChannel, string message)
+        private void HandleChannelMessage(Dictionary<string, string>? tags, string ircUser, string ircChannel, string message)
         {
             if (message.StartsWith(CommandPrefix))
             {
@@ -201,7 +201,7 @@ namespace Fatty
             {
                 foreach (PluginChannelMessageDelegate chanDel in ChannelMessageEvent.GetInvocationList())
                 {
-                    chanDel(ircUser, message);
+                    chanDel(tags, ircUser, message);
                 }
             }
         }

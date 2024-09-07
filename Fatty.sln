@@ -1,9 +1,14 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28307.271
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34728.123
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fatty", "Fatty\Fatty.csproj", "{E16BDDED-2518-4E44-B96C-4A69F5ECFFF0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Fatty", "Fatty\Fatty.csproj", "{E16BDDED-2518-4E44-B96C-4A69F5ECFFF0}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{E289D2E6-BAF9-424B-9A15-A6C508E58E02}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

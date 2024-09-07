@@ -40,8 +40,10 @@ namespace Fatty
             OwningChannel.ChannelMessageEvent += OnChannelMessage;
         }
 
-        void OnChannelMessage(string ircUser, string message)
+        void OnChannelMessage(Dictionary<string,string>? tags, string ircUser, string message)
         {
+            bool bHasTags = tags != null;
+
             if (message.Contains(OwningChannel.GetFattyNick()))
             {
                 RandomGreeting(ircUser, message);
