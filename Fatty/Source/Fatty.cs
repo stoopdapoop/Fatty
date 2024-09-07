@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Json;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Text;
@@ -29,18 +30,8 @@ namespace Fatty
         public void Launch()
         {
             AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
+            ModuleTypes = FattyHelpers.GetAllDerivedClasses<FattyModule>(); 
 
-            ModuleTypes.Add(typeof(TalkBackModule));
-            ModuleTypes.Add(typeof(TDAmeritradeModule));
-            ModuleTypes.Add(typeof(EmailModule));
-            ModuleTypes.Add(typeof(TwitchModule));
-            ModuleTypes.Add(typeof(GitHubModule));
-            ModuleTypes.Add(typeof(WolframModule));
-            ModuleTypes.Add(typeof(GoogleModule));
-            ModuleTypes.Add(typeof(CraigslistModule));
-            ModuleTypes.Add(typeof(SteamModule));
-
-            // Todo: loop through server contexts and connect to each
             List<ServerContext> ServerContexts = LoadServerConfigs();
 
             foreach (var server in ServerContexts)

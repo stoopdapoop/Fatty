@@ -38,7 +38,7 @@ namespace Fatty
         private class NamePromise
         {
             public NamePromise(ChannelContext inContext) { requestingContext = inContext; }
-            public string[] names;
+            //public string[] names;
             public ChannelContext requestingContext;
             public bool finished = false;
         }
