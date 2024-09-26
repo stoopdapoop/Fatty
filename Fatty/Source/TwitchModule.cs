@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Web;
+using static System.Net.WebRequestMethods;
 
 namespace Fatty
 {
@@ -41,6 +42,7 @@ namespace Fatty
 
         private void GenTwitchAuthURL(string ircUser, string ircChannel, string message)
         {
+            //string endpoint = "https://id.twitch.tv/oauth2/token";
             string encoded = HttpUtility.UrlEncode("scope=chat:read+chat:edit+whispers:read+whispers:edit+channel:moderate");
             Fatty.PrintToScreen(encoded, ConsoleColor.Magenta);
         

@@ -54,7 +54,7 @@ namespace Fatty
             // order defined by rfc
             if (pass != null)
             {
-                SendServerMessage($"Pass {pass}");
+                SendServerMessage($"PASS {pass}");
             }
 #nullable disable
             if (Context.ServerCaps != null)
@@ -212,7 +212,7 @@ namespace Fatty
         public void DisconnectOnExit()
         {
             Fatty.PrintToScreen("Disconnecting Due to Exit");
-            SendServerMessage(String.Format("QUIT :{0}", Context.QuitMessage));
+            SendServerMessage(String.Format($"QUIT :{0}", Context.QuitMessage));
         }
 
         public bool IsConnectedToServer()
