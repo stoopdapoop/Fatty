@@ -64,169 +64,9 @@ namespace Fatty
             }
         }
 
-        [DataContract]
-        public class GitHubEvent
-        {
-            [DataMember(Name = "type")]
-            public string EventType;
-
-            [DataMember(Name = "actor")]
-            public GitHubActor Actor;
-
-            [DataMember(Name = "repo")]
-            public GitHubRepo Repo;
-
-            [DataMember(Name = "payload")]
-            public GitHubPayload Payload;
-
-            [DataMember(Name = "created_at")]
-            public DateTime CreatedDateTime;
-        }
-
         public static DataContractJsonSerializerSettings SerializerSettings { get; private set; }
 
-
-        [DataContract]
-        public class GitHubActor
-        {
-            [DataMember(Name = "display_login")]
-            public string DisplayName;
-
-            [DataMember(Name = "url")]
-            public string URL;
-        }
-
-        [DataContract]
-        public class GitHubRepo
-        {
-            [DataMember(Name = "name")]
-            public string RepoName;
-        }
-
-        [DataContract]
-        public class GitHubPayload
-        {
-            [DataMember(Name = "head")]
-            public string Head;
-
-            [DataMember(Name = "size")]
-            public int PayloadSize;
-
-            [DataMember(Name = "commits")]
-            public List<GitHubCommit> Commits;
-
-            [DataMember(Name = "action")]
-            public string ActionName;
-
-            [DataMember(Name = "issue")]
-            public GitHubIssue Issue;
-
-            [DataMember(Name = "comment")]
-            public GitHubComment Comment;
-
-            [DataMember(Name = "ref_type")]
-            public string RefType;
-
-            [DataMember(Name = "member")]
-            public GitHubMember Member;
-
-            [DataMember(Name = "release")]
-            public GitHubRelease Release;
-
-            [DataMember(Name = "pages")]
-            public List<GitHubPage> Pages;
-        }
-
-        [DataContract]
-        public class GitHubIssue
-        {
-            [DataMember(Name = "html_url")]
-            public string PageURL;
-
-            [DataMember(Name = "title")]
-            public string IssueTitle;
-        }
-
-        [DataContract]
-        public class GitHubComment
-        {
-            [DataMember(Name = "body")]
-            public string Body;
-
-            [DataMember(Name = "html_url")]
-            public string PageURL;
-        }
-
-        [DataContract]
-        public class GitHubCommit
-        {
-            [DataMember(Name = "sha")]
-            public string Hash;
-
-            [DataMember(Name = "message")]
-            public string Message;
-
-            [DataMember(Name = "url")]
-            public string URL;
-        }
-
-        [DataContract]
-        public class GitHubMember
-        {
-            [DataMember(Name = "login")]
-            public string Login;
-
-            [DataMember(Name = "name")]
-            public string Name;
-        }
-
-        [DataContract]
-        public class GitHubRelease
-        {
-            [DataMember(Name = "body")]
-            public string Body;
-
-            [DataMember(Name = "html_url")]
-            public string URL;
-        }
-
-        [DataContract]
-        public class GitHubPage
-        {
-            [DataMember(Name = "html_url")]
-            public string PageURL;
-
-            [DataMember(Name = "action")]
-            public string ActionName;
-
-            [DataMember(Name = "page_name")]
-            public string PageName;
-
-            [DataMember(Name = "title")]
-            public string Title;
-
-            [DataMember(Name = "summary")]
-            public string Summary;
-
-            [DataMember(Name = "sha")]
-            public string PageHash;
-
-        }
-
         #endregion
-
-        class BatchedRequest : HttpRequestMessage
-        {
-            public BatchedRequest(string resource) : base(HttpMethod.Get, resource) { }
-
-            public List<(GitHubContext, Action<HttpWebResponse, GitHubContext>)> Listeners { get; set; }
-        }
-
-        class FattyRequest : HttpRequestMessage
-        {
-            public FattyRequest(string resource) : base(HttpMethod.Get, resource) { }
-            public object UserState { get; set; }
-        }
 
 
         private List<GitHubContext> ActiveChannelContexts;
@@ -304,24 +144,6 @@ namespace Fatty
             }
         }
 
-        // function for handling events after they've been reported
-        void PostReportEvent(GitHubEvent evnt, GitHubContext context)
-        {
-            switch (evnt.EventType)
-            {
-                case "GollumEvent":
-                    PostReportGollumEvent(evnt, context);
-                    break;
-            }
-        }
-
-        void PostReportGollumEvent(GitHubEvent evnt, GitHubContext context)
-        {
-            foreach (var page in evnt.Payload.Pages)
-            {
-                context.LatestWikiHash[page.PageURL] = page.PageHash;
-            }
-        }
 
         private class CommonFields
         {
@@ -382,7 +204,7 @@ namespace Fatty
                             string discussionURL = discussion.GetProperty("html_url").GetString();
                             string discussionTitle = discussion.GetProperty("title").GetString();
                             string action = root.GetProperty("action").GetString();
-                            formattedMessage = $"{user} {action} discussion \"{repo}/{discussionTitle}\" - {discussionURL}";
+                            formattedMessage = $"{user} {action} discussion \"{repo} - {discussionTitle}\" - {discussionURL}";
                         }
                         break;
                     case "discussion_comment":
@@ -514,97 +336,43 @@ namespace Fatty
             return formattedMessage;
         }
 
-        string FormatRestEventString(GitHubEvent evnt, GitHubContext context)
-        {
-            switch (evnt.EventType)
-            {
-                case "PushEvent":
-                    return FormatPushEventString(evnt);
-                case "IssuesEvent":
-                    return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} issue \"{evnt.Payload.Issue.IssueTitle}\" - {evnt.Payload.Issue.PageURL}";
-                case "IssueCommentEvent":
-                    return FormatIssueCommentEventString(evnt);
-                case "PullRequestEvent":
-                    return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} pull request for {evnt.Repo.RepoName}";
-                case "DeleteEvent":
-                    return $"{evnt.Actor.DisplayName} Deleted {evnt.Payload.RefType} from {evnt.Repo.RepoName}";
-                case "CommitCommentEvent":
-                    return $"{evnt.Actor.DisplayName} made comment on commit in {evnt.Repo.RepoName} - {evnt.Payload.Comment.PageURL}";
-                case "CreateEvent":
-                    return $"{evnt.Actor.DisplayName} created {evnt.Payload.RefType} in {evnt.Repo.RepoName}";
-                case "ForkEvent":
-                    return $"{evnt.Actor.DisplayName} forked {evnt.Repo.RepoName}";
-                case "MemberEvent":
-                    return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} member {evnt.Payload.Member.Name} \"{evnt.Payload.Member.Login}\" to {evnt.Repo.RepoName}";
-                case "PublicEvent":
-                    return $"{evnt.Actor.DisplayName} made {evnt.Repo.RepoName} public";
-                case "WatchEvent":
-                    return $"{evnt.Actor.DisplayName} started watching {evnt.Repo.RepoName}!!";
-                case "ReleaseEvent":
-                    return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} release in {evnt.Repo.RepoName}. \"{evnt.Payload.Release.Body}\" -- {evnt.Payload.Release.URL}";
-                case "GollumEvent":
-                    return FormatGollumEventString(evnt, context);
+        //string FormatRestEventString(GitHubEvent evnt, GitHubContext context)
+        //{
+        //    switch (evnt.EventType)
+        //    {
+        //        case "PushEvent":
+        //            return FormatPushEventString(evnt);
+        //        case "IssuesEvent":
+        //            return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} issue \"{evnt.Payload.Issue.IssueTitle}\" - {evnt.Payload.Issue.PageURL}";
+        //        case "IssueCommentEvent":
+        //            return FormatIssueCommentEventString(evnt);
+        //        case "PullRequestEvent":
+        //            return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} pull request for {evnt.Repo.RepoName}";
+        //        case "DeleteEvent":
+        //            return $"{evnt.Actor.DisplayName} Deleted {evnt.Payload.RefType} from {evnt.Repo.RepoName}";
+        //        case "CommitCommentEvent":
+        //            return $"{evnt.Actor.DisplayName} made comment on commit in {evnt.Repo.RepoName} - {evnt.Payload.Comment.PageURL}";
+        //        case "CreateEvent":
+        //            return $"{evnt.Actor.DisplayName} created {evnt.Payload.RefType} in {evnt.Repo.RepoName}";
+        //        case "ForkEvent":
+        //            return $"{evnt.Actor.DisplayName} forked {evnt.Repo.RepoName}";
+        //        case "MemberEvent":
+        //            return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} member {evnt.Payload.Member.Name} \"{evnt.Payload.Member.Login}\" to {evnt.Repo.RepoName}";
+        //        case "PublicEvent":
+        //            return $"{evnt.Actor.DisplayName} made {evnt.Repo.RepoName} public";
+        //        case "WatchEvent":
+        //            return $"{evnt.Actor.DisplayName} started watching {evnt.Repo.RepoName}!!";
+        //        case "ReleaseEvent":
+        //            return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} release in {evnt.Repo.RepoName}. \"{evnt.Payload.Release.Body}\" -- {evnt.Payload.Release.URL}";
+        //        case "GollumEvent":
+        //            return FormatGollumEventString(evnt, context);
 
-                default:
-                    // see "ShouldReportEvent"
-                    return $"Unhandled Event \"{evnt.EventType}\" Triggered by {evnt.Actor.DisplayName}! Fix or ignore.";
-            }
-        }
-
-        static string FormatPushEventString(GitHubEvent evnt)
-        {
-            int commitCount = evnt.Payload.PayloadSize;
-            StringBuilder messageAccumulator = new StringBuilder();
-
-            messageAccumulator.Append($"{evnt.Actor.DisplayName} pushed {evnt.Payload.PayloadSize} commits to {evnt.Repo.RepoName}: ");
-            for (int i = 0; i < commitCount; ++i)
-            {
-                string commitURL = $"https://www.github.com/{evnt.Repo.RepoName}/commit/{evnt.Payload.Commits[i].Hash.Substring(0, 8)}";
-                messageAccumulator.Append($"\"{evnt.Payload.Commits[i].Message}\" - {commitURL}");
-                if (i != commitCount - 1)
-                {
-                    messageAccumulator.Append(" || ");
-                }
-            }
-
-            return messageAccumulator.ToString();
-        }
-
-        string FormatIssueCommentEventString(GitHubEvent evnt)
-        {
-            const int previewLength = 26;
-            string bodySnippet = evnt.Payload.Comment.Body.Substring(0, Math.Min(evnt.Payload.Comment.Body.Length, previewLength));
-            if (evnt.Payload.Comment.Body.Length > previewLength)
-                bodySnippet += "...";
-            return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} comment \"{evnt.Payload.Issue.IssueTitle}\" - {evnt.Payload.Issue.PageURL} // {bodySnippet}";
-        }
-
-        string FormatGollumEventString(GitHubEvent evnt, GitHubContext context)
-        {
-            string ReturnString;
-            if (evnt.Payload.Pages.Count > 0)
-            {
-                GitHubPage firstPage = evnt.Payload.Pages[0];
-                string oldHash;
-                if (context.LatestWikiHash.TryGetValue(firstPage.PageURL, out oldHash))
-                {
-                    string compareURL = $"{firstPage.PageURL}/_compare/{oldHash}...{firstPage.PageHash}";
-                    ReturnString = $"{evnt.Actor.DisplayName} {firstPage.ActionName} \"{firstPage.Title}\" Wiki page : {compareURL}";
-                }
-                else
-                {
-                    // just return the regular url if we haven't seen the old hash and can't make a comparison url
-                    ReturnString = $"{evnt.Actor.DisplayName} {evnt.Payload.Pages[0].ActionName} \"{evnt.Payload.Pages[0].Title}\" Wiki page : {firstPage.PageURL}";
-                }
-            }
-            else
-            {
-                ReturnString = $"{evnt.Actor.DisplayName} made some change to the wiki, but there are no pages associated with the change. This should never happen";
-            }
-
-            return ReturnString;
-        }
-
+        //        default:
+        //            // see "ShouldReportEvent"
+        //            return $"Unhandled Event \"{evnt.EventType}\" Triggered by {evnt.Actor.DisplayName}! Fix or ignore.";
+        //    }
+        //}
+        
         public void GitHubLimitCommand(string ircUser, string ircChannel, string message)
         {
             GitHubContext firstContext = ActiveChannelContexts[0];
