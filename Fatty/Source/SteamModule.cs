@@ -213,16 +213,19 @@ namespace Fatty
                 BaseAddress = new Uri(APIBaseAddress)
             };
 
-            HttpRequestMessage request = GetNeotokyoServerRequest();
 
             TimeSpan PollInterval = TimeSpan.FromMinutes(Config.PollFrequencyMinutes);
             TimeSpan SleepTime = TimeSpan.FromMinutes(context.MessageCooldownMinutes);
 
+            TimeSpan TimeToSleep;
             while (!cancel.IsCancellationRequested)
             {
+                TimeToSleep = PollInterval;
                 try
                 {
+                    HttpRequestMessage request = GetNeotokyoServerRequest();
                     var result = await client.SendAsync(request);
+                    
                     if (result.IsSuccessStatusCode)
                     {
                         List<SteamGameServer> PopulatedServers = new List<SteamGameServer>();
@@ -261,22 +264,15 @@ namespace Fatty
                                 OwningChannel.SendChannelMessage($"{PopulatedServers.Count} Neotokyo servers have {context.MinPlayerThreshold} or more nerds in them");
                             }
 
-                            await Task.Delay(SleepTime);
+                            TimeToSleep = SleepTime;
                         }
-                        else
-                        {
-                            await Task.Delay(PollInterval);
-                        }
-                    }
-                    else
-                    {
-                        await Task.Delay(PollInterval);
                     }
                 }
                 catch(Exception ex)
                 {
                     Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
                 }
+                await Task.Delay(TimeToSleep);
             }
         }
 
