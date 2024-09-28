@@ -287,10 +287,10 @@ namespace Fatty
         {
             try
             {
-                string repoURL = doc.RootElement.GetProperty("repository").GetProperty("url").ToString();
+                string repoURL = doc.RootElement.GetProperty("repository").GetProperty("full_name").ToString();
                 foreach (GitHubContext gitHubContext in ActiveChannelContexts)
                 {
-                    if (gitHubContext.ProjectEndpoint == repoURL)
+                    if (gitHubContext.ProjectEndpoint.ToLower() == repoURL.ToLower())
                     {
                         return true;
                     }
@@ -330,7 +330,7 @@ namespace Fatty
             public CommonFields(JsonElement root)
             {
                 try
-                { RepoName = root.GetProperty("repository").GetProperty("name").GetString(); }
+                { RepoName = root.GetProperty("repository").GetProperty("full_name").GetString(); }
                 catch { }
                 try
                 { ActorName = root.GetProperty("sender").GetProperty("login").GetString(); }
@@ -355,7 +355,7 @@ namespace Fatty
                             var comment = root.GetProperty("comment");
                             string user = root.GetProperty("sender").GetProperty("login").GetString();
                             string action = root.GetProperty("action").GetString();
-                            string repo = root.GetProperty("repository ").GetProperty("name").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
                             string url = comment.GetProperty("html_url").GetString();
                             string body = comment.GetProperty("body").GetString();
                             const int previewLength = 26;
@@ -368,7 +368,7 @@ namespace Fatty
                     case "create":
                         {
                             string user = root.GetProperty("sender").GetProperty("login").GetString();
-                            string repo = root.GetProperty("repository").GetProperty("name").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
                             string type = root.GetProperty("ref_type").GetString();
                             string description = root.GetProperty("description").GetString();
                             formattedMessage = $"{user} created {type} in {repo} - {description}";
@@ -378,7 +378,7 @@ namespace Fatty
                         {
                             var discussion = root.GetProperty("discussion");
                             string user = root.GetProperty("sender").GetProperty("login").GetString();
-                            string repo = root.GetProperty("repository").GetProperty("name").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
                             string discussionURL = discussion.GetProperty("html_url").GetString();
                             string discussionTitle = discussion.GetProperty("title").GetString();
                             string action = root.GetProperty("action").GetString();
@@ -390,7 +390,7 @@ namespace Fatty
                             var discussion = root.GetProperty("discussion");
                             var comment = root.GetProperty("comment");
                             string user = root.GetProperty("sender").GetProperty("login").GetString();
-                            string repo = root.GetProperty("repository").GetProperty("name").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
                             string commentUrl = comment.GetProperty("html_url").GetString();
                             string discussionTitle = discussion.GetProperty("title").GetString();
                             string action = root.GetProperty("action").GetString();
@@ -399,7 +399,7 @@ namespace Fatty
                         break;
                     case "repository":
                         {
-                            string repo = root.GetProperty("repository").GetProperty("name").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
                             string action = root.GetProperty("action").GetString();
                             string user = root.GetProperty("sender").GetProperty("login").GetString();
                             string url =  root.GetProperty("repository").GetProperty("html_url").GetString();
@@ -408,7 +408,7 @@ namespace Fatty
                         break;
                     case "star":
                         {
-                            string repo = root.GetProperty("repository").GetProperty("name").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
                             string action = root.GetProperty("action").GetString();
                             string user = root.GetProperty("sender").GetProperty("login").GetString();
                             string url = root.GetProperty("repository").GetProperty("html_url").GetString();
@@ -419,7 +419,7 @@ namespace Fatty
                         {
                             string user = root.GetProperty("sender").GetProperty("login").GetString();
                             string url = root.GetProperty("repository").GetProperty("html_url").GetString();
-                            string repo = root.GetProperty("repository").GetProperty("name").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
                             formattedMessage = $"{user} forked {repo} - {url}";
                         }
                         break;
@@ -432,7 +432,7 @@ namespace Fatty
                             string pageUrl = pages.GetProperty("html_url").GetString();
                             string user = root.GetProperty("sender").GetProperty("login").GetString();
                             string repoUrl = root.GetProperty("repository").GetProperty("html_url").GetString();
-                            string repo = root.GetProperty("repository").GetProperty("name").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
                             formattedMessage = $"{user} {action} page.  {repo}/{pageTitle} \"{pageName}\" - {pageUrl}";
                         }
                         break;
@@ -444,7 +444,7 @@ namespace Fatty
                             string commentURL = comment.GetProperty("html_url").GetString();
                             string user = root.GetProperty("sender").GetProperty("login").GetString();
                             string issueTitle = issue.GetProperty("title").GetString();
-                            string repo = root.GetProperty("repository").GetProperty("name").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
                             formattedMessage = $"{user} {action} comment on {repo}/{issueTitle}. {commentURL}";
                         }
                         break;
@@ -452,7 +452,7 @@ namespace Fatty
                         {
                             var issue = root.GetProperty("issue");
                             string user = root.GetProperty("sender").GetProperty("login").GetString();
-                            string repo = root.GetProperty("repository").GetProperty("name").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
                             string action = root.GetProperty("action").GetString();
                             string issueTitle = issue.GetProperty("title").GetString();
                             string issueURL = issue.GetProperty("html_url").GetString();
@@ -465,7 +465,7 @@ namespace Fatty
                             string requestTitle = pullRequest.GetProperty("title").GetString();
                             string requestURL = pullRequest.GetProperty("html_url").GetString();
                             string user = root.GetProperty("sender").GetProperty("login").GetString();
-                            string repo = root.GetProperty("repository").GetProperty("name").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
                             string action = root.GetProperty("action").GetString();
                             formattedMessage = $"{user} {action} pull request. \"{repo}/{requestTitle}\". {requestURL}";
                         }
@@ -474,7 +474,7 @@ namespace Fatty
                         {
                             var commits = root.GetProperty("commits");
                             string user = root.GetProperty("sender").GetProperty("login").GetString();
-                            string repo = root.GetProperty("repository").GetProperty("name").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
                             JsonElement[] commitIterator = commits.EnumerateArray().ToArray();
                             int commitCount = commitIterator.Length;
                             {
