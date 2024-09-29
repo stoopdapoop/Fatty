@@ -232,15 +232,15 @@ namespace Fatty
                         break;
                     case "check_suite":
                         {
-                            var appNode = root.GetProperty("app");
-                            string id = root.GetProperty("id").GetString();
-                            string status = root.GetProperty("status").GetString();
-                            bool bCompleted = status == "completed";
-                            string conclusion = bCompleted ? root.GetProperty("conclusion").GetString() : "";
-                            string url = root.GetProperty("check_runs_url").GetString();
-                            string appUrl = appNode.GetProperty("html_url").GetString();
-                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
-                            formattedMessage = $"Check Suite on  {repo} {status}. {conclusion} - {url}";
+                            //var appNode = root.GetProperty("app");
+                            //string id = root.GetProperty("id").GetString();
+                            //string status = root.GetProperty("status").GetString();
+                            //bool bCompleted = status == "completed";
+                            //string conclusion = bCompleted ? root.GetProperty("conclusion").GetString() : "";
+                            //string url = root.GetProperty("check_runs_url").GetString();
+                            //string appUrl = appNode.GetProperty("html_url").GetString();
+                            //string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
+                            //formattedMessage = $"Check Suite on  {repo} {status}. {conclusion} - {url}";
                         }
                         break;
                     case "create":
@@ -364,11 +364,7 @@ namespace Fatty
                             int commitCount = commitIterator.Length;
                             {
                                 StringBuilder messageAccumulator = new StringBuilder();
-                                if (commitCount > 0)
-                                {
-                                    messageAccumulator.Append($"{user} pushed {commitCount} commits to {repo}. {compareURL} -");
-                                }
-                                else
+                                if (commitCount == 0)
                                 {
                                     bool bCreated = root.GetProperty("created").GetBoolean();
                                     bool bDeleted = root.GetProperty("deleted").GetBoolean();
@@ -384,15 +380,23 @@ namespace Fatty
                                     }
                                     messageAccumulator.Append($"{user} pushed: {verb} {refType} to {repo}. - {compareURL}");
                                 }
-                                for (int i = 0; i < commitCount; ++i)
+                                else if (commitCount == 1)
                                 {
-                                    //string hash = commitIterator[i].GetProperty("id").ToString();
-                                    string message = commitIterator[i].GetProperty("message").ToString();
-                                    //string commitURL = $"https://www.github.com/{repo}/commit/{hash.Substring(0, 8)}";
-                                    messageAccumulator.Append($"\"{message}\"");
-                                    if (i != commitCount - 1)
+                                    string hash = commitIterator[0].GetProperty("id").ToString();
+                                    string commitURL = $"https://www.github.com/{repo}/commit/{hash.Substring(0, 8)}";
+                                    messageAccumulator.Append($"{user} pushed a commit to {repo}. {commitURL} -");
+                                }
+                                else
+                                {
+                                    messageAccumulator.Append($"{user} pushed {commitCount} commits to {repo}. {compareURL} -");
+                                    for (int i = 0; i < commitCount; ++i)
                                     {
-                                        messageAccumulator.Append(" || ");
+                                        string message = commitIterator[i].GetProperty("message").ToString();
+                                        messageAccumulator.Append($"\"{message}\"");
+                                        if (i != commitCount - 1)
+                                        {
+                                            messageAccumulator.Append(" || ");
+                                        }
                                     }
                                 }
 
@@ -591,7 +595,7 @@ namespace Fatty
                     using (StreamReader reader = new StreamReader(request.InputStream, request.ContentEncoding))
                     {
                         string payload = reader.ReadToEnd();
-                        Console.WriteLine($"Received github event: {eventHeaderType}");
+                        //Console.WriteLine($"Received github event: {eventHeaderType}");
 
                         if(eventHeaderType == "ping")
                         {
