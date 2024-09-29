@@ -125,7 +125,7 @@ namespace Fatty
             OwningChannel.SendChannelMessage(eventText);
         }
 
-        bool ShouldReportEvent(JsonDocument doc, string eventHeaderType)
+        bool ShouldReportEvent(JsonDocument doc, string eventHeaderType, string eventMessage)
         {
             try
             {
@@ -134,7 +134,7 @@ namespace Fatty
                 {
                     if (gitHubContext.ProjectEndpoint.ToLower() == repoURL.ToLower())
                     {
-                        return DoesEventPassFilter(doc, eventHeaderType);
+                        return DoesEventPassFilter(doc, eventHeaderType, eventMessage);
                     }
                 }
                 return false;
@@ -146,8 +146,13 @@ namespace Fatty
             }
         }
 
-        bool DoesEventPassFilter(JsonDocument doc, string eventHeaderType)
+        bool DoesEventPassFilter(JsonDocument doc, string eventHeaderType, string eventMessage)
         {
+            if(eventMessage.Length == 0)
+            {
+                return false;
+            }
+
             // basically ignore most check messages, unless there's a failure
             if (eventHeaderType == "check_run")
             {
@@ -201,7 +206,7 @@ namespace Fatty
 
         public static string FormatEventString(JsonDocument input, string eventType)
         {
-            string formattedMessage = "dunno, lol";
+            string formattedMessage = "";
             try
             {
                 JsonElement root = input.RootElement;
@@ -435,7 +440,7 @@ namespace Fatty
                         break;
                     default:
                         {
-                            formattedMessage = $"Unhandled event type: {eventType} by {commonFields.ActorName}";
+                            //formattedMessage = $"Unhandled event type: {eventType} by {commonFields.ActorName}";
                         }
                         break;
                 }
@@ -603,7 +608,7 @@ namespace Fatty
                             {
                                 foreach(GitHubModule mod in ListenerModules)
                                 {
-                                    if(mod.ShouldReportEvent(doc, eventHeaderType))
+                                    if(mod.ShouldReportEvent(doc, eventHeaderType, eventMessage))
                                     {
                                         mod.ReportEvent(doc, eventMessage);
                                     }
