@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -10,6 +11,7 @@ using System.Runtime.Serialization.Json;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
+using static System.Net.WebRequestMethods;
 
 namespace Fatty
 {
@@ -123,7 +125,7 @@ namespace Fatty
             OwningChannel.SendChannelMessage(eventText);
         }
 
-        bool ShouldReportEvent(JsonDocument doc)
+        bool ShouldReportEvent(JsonDocument doc, string eventHeaderType)
         {
             try
             {
@@ -132,7 +134,7 @@ namespace Fatty
                 {
                     if (gitHubContext.ProjectEndpoint.ToLower() == repoURL.ToLower())
                     {
-                        return true;
+                        return DoesEventPassFilter(doc, eventHeaderType);
                     }
                 }
                 return false;
@@ -144,6 +146,42 @@ namespace Fatty
             }
         }
 
+        bool DoesEventPassFilter(JsonDocument doc, string eventHeaderType)
+        {
+            // basically ignore most check messages, unless there's a failure
+            if (eventHeaderType == "check_run")
+            {
+                return false;
+            }
+
+            // delete messages are handled by push
+            if (eventHeaderType == "delete")
+            {
+                return false;
+            }
+
+            if (eventHeaderType == "check_suite")
+            {
+                return false;
+
+                // lol maybe we'll use this someday
+                //JsonElement root = doc.RootElement;
+                //string status = root.GetProperty("status").GetString();
+                //if (status != "completed")
+                //{
+                //    return false;
+                //}
+
+                //// conclusion only valid if status is completed
+                //string conclusion = root.GetProperty("conclusion").GetString();
+                //if(conclusion == "success" || conclusion == "neutral")
+                //{
+                //    return false; 
+                //}
+            }
+
+            return true;
+        }
 
         private class CommonFields
         {
@@ -169,7 +207,7 @@ namespace Fatty
                 JsonElement root = input.RootElement;
                 CommonFields commonFields = new CommonFields(root);
 
-                
+
                 switch (eventType)
                 {
                     case "commit_comment":
@@ -187,13 +225,28 @@ namespace Fatty
                             formattedMessage = $"{commonFields.ActorName} {action} a commit comment in {repo} - {url} //{bodySnippet}";
                         }
                         break;
+                    case "check_suite":
+                        {
+                            var appNode = root.GetProperty("app");
+                            string id = root.GetProperty("id").GetString();
+                            string status = root.GetProperty("status").GetString();
+                            bool bCompleted = status == "completed";
+                            string conclusion = bCompleted ? root.GetProperty("conclusion").GetString() : "";
+                            string url = root.GetProperty("check_runs_url").GetString();
+                            string appUrl = appNode.GetProperty("html_url").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
+                            formattedMessage = $"Check Suite on  {repo} {status}. {conclusion} - {url}";
+                        }
+                        break;
                     case "create":
                         {
                             string user = root.GetProperty("sender").GetProperty("login").GetString();
+                            string refName = root.GetProperty("ref").GetString();
                             string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
                             string type = root.GetProperty("ref_type").GetString();
                             string description = root.GetProperty("description").GetString();
-                            formattedMessage = $"{user} created {type} in {repo} - {description}";
+                            string pusherType = root.GetProperty("pusher_type").GetString();
+                            formattedMessage = $"{pusherType} {user} created {type} \"{refName}\" in {repo} - {description}";
                         }
                         break;
                     case "discussion":
@@ -204,7 +257,7 @@ namespace Fatty
                             string discussionURL = discussion.GetProperty("html_url").GetString();
                             string discussionTitle = discussion.GetProperty("title").GetString();
                             string action = root.GetProperty("action").GetString();
-                            formattedMessage = $"{user} {action} discussion \"{repo} - {discussionTitle}\" - {discussionURL}";
+                            formattedMessage = $"{user} {action} discussion \"{discussionTitle}\" in {repo} - {discussionURL}";
                         }
                         break;
                     case "discussion_comment":
@@ -216,7 +269,7 @@ namespace Fatty
                             string commentUrl = comment.GetProperty("html_url").GetString();
                             string discussionTitle = discussion.GetProperty("title").GetString();
                             string action = root.GetProperty("action").GetString();
-                            formattedMessage = $"{user} {action} discussion comment on \"{repo}/{discussionTitle}\" - {commentUrl}";
+                            formattedMessage = $"{user} {action} discussion comment in \"{discussionTitle}\" on {repo} - {commentUrl}";
                         }
                         break;
                     case "repository":
@@ -234,15 +287,16 @@ namespace Fatty
                             string action = root.GetProperty("action").GetString();
                             string user = root.GetProperty("sender").GetProperty("login").GetString();
                             string url = root.GetProperty("repository").GetProperty("html_url").GetString();
-                            formattedMessage = $"{user} {action} star for {repo} - {url}";
+                            string stargazerCount = root.GetProperty("repository").GetProperty("stargazers_count").GetString();
+                            formattedMessage = $"{user} {action} star on {repo}. {stargazerCount} stargazers. - {url}";
                         }
                         break;
                     case "fork":
                         {
                             string user = root.GetProperty("sender").GetProperty("login").GetString();
-                            string url = root.GetProperty("repository").GetProperty("html_url").GetString();
+                            string newUrl = root.GetProperty("html_url").GetString();
                             string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
-                            formattedMessage = $"{user} forked {repo} - {url}";
+                            formattedMessage = $"{user} forked {repo} - {newUrl}";
                         }
                         break;
                     case "gollum":
@@ -255,7 +309,7 @@ namespace Fatty
                             string user = root.GetProperty("sender").GetProperty("login").GetString();
                             string repoUrl = root.GetProperty("repository").GetProperty("html_url").GetString();
                             string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
-                            formattedMessage = $"{user} {action} page.  {repo}/{pageTitle} \"{pageName}\" - {pageUrl}";
+                            formattedMessage = $"{user} {action} page \"{pageName}\" in {repo}: {pageTitle} - {pageUrl}";
                         }
                         break;
                     case "issue_comment":
@@ -263,11 +317,14 @@ namespace Fatty
                             var comment = root.GetProperty("comment");
                             var issue = root.GetProperty("issue");
                             string action = root.GetProperty("action").GetString();
+                            string commitId = comment.GetProperty("commit_id").GetString();
                             string commentURL = comment.GetProperty("html_url").GetString();
+                            // prune away most of the commit hash
+                            commentURL = commentURL.Replace(commitId, commitId.Substring(0, 8));
                             string user = root.GetProperty("sender").GetProperty("login").GetString();
                             string issueTitle = issue.GetProperty("title").GetString();
                             string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
-                            formattedMessage = $"{user} {action} comment on {repo}/{issueTitle}. {commentURL}";
+                            formattedMessage = $"{user} {action} comment on {repo}:\"{issueTitle}\" - {commentURL}";
                         }
                         break;
                     case "issues":
@@ -278,7 +335,7 @@ namespace Fatty
                             string action = root.GetProperty("action").GetString();
                             string issueTitle = issue.GetProperty("title").GetString();
                             string issueURL = issue.GetProperty("html_url").GetString();
-                            formattedMessage = $"{user} {action} issue \"{repo}/{issueTitle}\". {issueURL}";
+                            formattedMessage = $"{user} {action} issue in {repo}: \"{issueTitle}\" - {issueURL}";
                         }
                         break;
                     case "pull_request":
@@ -289,7 +346,7 @@ namespace Fatty
                             string user = root.GetProperty("sender").GetProperty("login").GetString();
                             string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
                             string action = root.GetProperty("action").GetString();
-                            formattedMessage = $"{user} {action} pull request. \"{repo}/{requestTitle}\". {requestURL}";
+                            formattedMessage = $"{user} {action} pull request in {repo}:\"{requestTitle}\". {requestURL}";
                         }
                         break;
                     case "push":
@@ -297,27 +354,83 @@ namespace Fatty
                             var commits = root.GetProperty("commits");
                             string user = root.GetProperty("sender").GetProperty("login").GetString();
                             string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
+                            string compareURL = root.GetProperty("compare").GetString();
                             JsonElement[] commitIterator = commits.EnumerateArray().ToArray();
                             int commitCount = commitIterator.Length;
                             {
                                 StringBuilder messageAccumulator = new StringBuilder();
-
-                                messageAccumulator.Append($"{user} pushed {commitCount} commits to {repo}: ");
+                                if (commitCount > 0)
+                                {
+                                    messageAccumulator.Append($"{user} pushed {commitCount} commits to {repo}. {compareURL} -");
+                                }
+                                else
+                                {
+                                    bool bCreated = root.GetProperty("created").GetBoolean();
+                                    bool bDeleted = root.GetProperty("deleted").GetBoolean();
+                                    string refType = root.GetProperty("ref").GetString();
+                                    string verb = "";
+                                    if (bCreated)
+                                    {
+                                        verb += "created";
+                                    }
+                                    if (bDeleted)
+                                    {
+                                        verb += "deleted";
+                                    }
+                                    messageAccumulator.Append($"{user} pushed: {verb} {refType} to {repo}. - {compareURL}");
+                                }
                                 for (int i = 0; i < commitCount; ++i)
                                 {
-                                    string hash = commitIterator[i].GetProperty("id").ToString();
+                                    //string hash = commitIterator[i].GetProperty("id").ToString();
                                     string message = commitIterator[i].GetProperty("message").ToString();
-                                    string commitURL = $"https://www.github.com/{repo}/commit/{hash.Substring(0, 8)}";
-                                    messageAccumulator.Append($"\"{message}\" - {commitURL}");
+                                    //string commitURL = $"https://www.github.com/{repo}/commit/{hash.Substring(0, 8)}";
+                                    messageAccumulator.Append($"\"{message}\"");
                                     if (i != commitCount - 1)
                                     {
                                         messageAccumulator.Append(" || ");
                                     }
                                 }
 
+                                // truncate to fit into message
+                                const int LengthTarget = 480;
+                                if(messageAccumulator.Length > LengthTarget)
+                                {
+                                    messageAccumulator.Remove(LengthTarget - 1, messageAccumulator.Length - LengthTarget);
+                                    messageAccumulator.Append("...");
+                                }
                                 formattedMessage = messageAccumulator.ToString();
                             }
 
+                        }
+                        break;
+                    case "release":
+                        {
+                            var release = root.GetProperty("release");
+                            string tagName = release.GetProperty("tag_name").GetString();
+                            string releaseName = release.GetProperty("name").GetString();
+                            bool bIsDraft = release.GetProperty("draft").GetBoolean();
+                            bool bIsPrerelease = release.GetProperty("prerelease").GetBoolean();
+                            string user = root.GetProperty("sender").GetProperty("login").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
+                            string action = root.GetProperty("action").GetString();
+                            formattedMessage = $"{user} {action} release {(bIsDraft ? "[Draft]" : "")} {(bIsPrerelease ? "[Prerelease]" : "")} {tagName}-{releaseName} on {repo}";
+                        }
+                        break;
+                    case "watch":
+                        {
+                            string user = root.GetProperty("sender").GetProperty("login").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
+                            string action = root.GetProperty("action").GetString();
+                            string watchersCount = root.GetProperty("repository").GetProperty("watchers_count").GetString();
+                            string url = root.GetProperty("repository").GetProperty("html_url").GetString();
+
+                            formattedMessage = $"{user} {action} watch on {repo}. {watchersCount} watchers. - {url}";
+                        }
+                        break;
+                    case "delete":
+                        {
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
+                            formattedMessage = "Delete in {repo}";
                         }
                         break;
                     default:
@@ -335,43 +448,6 @@ namespace Fatty
 
             return formattedMessage;
         }
-
-        //string FormatRestEventString(GitHubEvent evnt, GitHubContext context)
-        //{
-        //    switch (evnt.EventType)
-        //    {
-        //        case "PushEvent":
-        //            return FormatPushEventString(evnt);
-        //        case "IssuesEvent":
-        //            return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} issue \"{evnt.Payload.Issue.IssueTitle}\" - {evnt.Payload.Issue.PageURL}";
-        //        case "IssueCommentEvent":
-        //            return FormatIssueCommentEventString(evnt);
-        //        case "PullRequestEvent":
-        //            return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} pull request for {evnt.Repo.RepoName}";
-        //        case "DeleteEvent":
-        //            return $"{evnt.Actor.DisplayName} Deleted {evnt.Payload.RefType} from {evnt.Repo.RepoName}";
-        //        case "CommitCommentEvent":
-        //            return $"{evnt.Actor.DisplayName} made comment on commit in {evnt.Repo.RepoName} - {evnt.Payload.Comment.PageURL}";
-        //        case "CreateEvent":
-        //            return $"{evnt.Actor.DisplayName} created {evnt.Payload.RefType} in {evnt.Repo.RepoName}";
-        //        case "ForkEvent":
-        //            return $"{evnt.Actor.DisplayName} forked {evnt.Repo.RepoName}";
-        //        case "MemberEvent":
-        //            return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} member {evnt.Payload.Member.Name} \"{evnt.Payload.Member.Login}\" to {evnt.Repo.RepoName}";
-        //        case "PublicEvent":
-        //            return $"{evnt.Actor.DisplayName} made {evnt.Repo.RepoName} public";
-        //        case "WatchEvent":
-        //            return $"{evnt.Actor.DisplayName} started watching {evnt.Repo.RepoName}!!";
-        //        case "ReleaseEvent":
-        //            return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} release in {evnt.Repo.RepoName}. \"{evnt.Payload.Release.Body}\" -- {evnt.Payload.Release.URL}";
-        //        case "GollumEvent":
-        //            return FormatGollumEventString(evnt, context);
-
-        //        default:
-        //            // see "ShouldReportEvent"
-        //            return $"Unhandled Event \"{evnt.EventType}\" Triggered by {evnt.Actor.DisplayName}! Fix or ignore.";
-        //    }
-        //}
         
         public void GitHubLimitCommand(string ircUser, string ircChannel, string message)
         {
@@ -521,7 +597,7 @@ namespace Fatty
                             {
                                 foreach(GitHubModule mod in ListenerModules)
                                 {
-                                    if(mod.ShouldReportEvent(doc))
+                                    if(mod.ShouldReportEvent(doc, eventHeaderType))
                                     {
                                         mod.ReportEvent(doc, eventMessage);
                                     }
