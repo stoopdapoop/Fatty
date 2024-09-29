@@ -587,6 +587,12 @@ namespace Fatty
                     {
                         string payload = reader.ReadToEnd();
                         Console.WriteLine($"Received github event: {eventHeaderType}");
+
+                        if(eventHeaderType == "ping")
+                        {
+                            return true;
+                        }    
+
                         using (JsonDocument doc = JsonDocument.Parse(payload))
                         {
                             string eventMessage = GitHubModule.FormatEventString(doc, eventHeaderType);
