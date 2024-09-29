@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -11,7 +10,6 @@ using System.Runtime.Serialization.Json;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
-using static System.Net.WebRequestMethods;
 
 namespace Fatty
 {
@@ -212,7 +210,6 @@ namespace Fatty
                 JsonElement root = input.RootElement;
                 CommonFields commonFields = new CommonFields(root);
 
-
                 switch (eventType)
                 {
                     case "commit_comment":
@@ -282,7 +279,7 @@ namespace Fatty
                             string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
                             string action = root.GetProperty("action").GetString();
                             string user = root.GetProperty("sender").GetProperty("login").GetString();
-                            string url =  root.GetProperty("repository").GetProperty("html_url").GetString();
+                            string url = root.GetProperty("repository").GetProperty("html_url").GetString();
                             formattedMessage = $"{user} {action} {repo} - {url}";
                         }
                         break;
@@ -343,6 +340,12 @@ namespace Fatty
                             formattedMessage = $"{user} {action} issue in {repo}: \"{issueTitle}\" - {issueURL}";
                         }
                         break;
+                    case "meta":
+                        {
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
+                            formattedMessage = $"Webhook deleted for {repo}";
+                        }
+                        break;
                     case "pull_request":
                         {
                             var pullRequest = root.GetProperty("pull_request");
@@ -352,6 +355,13 @@ namespace Fatty
                             string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
                             string action = root.GetProperty("action").GetString();
                             formattedMessage = $"{user} {action} pull request in {repo}:\"{requestTitle}\". {requestURL}";
+                        }
+                        break;
+                    case "ping":
+                        {
+                            var hook = root.GetProperty("hook");
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
+                            formattedMessage = $"Webhook connection established from {repo}";
                         }
                         break;
                     case "push":
@@ -410,7 +420,6 @@ namespace Fatty
                                 }
                                 formattedMessage = messageAccumulator.ToString();
                             }
-
                         }
                         break;
                     case "release":
@@ -445,7 +454,6 @@ namespace Fatty
                         break;
                     default:
                         {
-                            //formattedMessage = $"Unhandled event type: {eventType} by {commonFields.ActorName}";
                         }
                         break;
                 }
@@ -596,26 +604,24 @@ namespace Fatty
                     using (StreamReader reader = new StreamReader(request.InputStream, request.ContentEncoding))
                     {
                         string payload = reader.ReadToEnd();
-                        //Console.WriteLine($"Received github event: {eventHeaderType}");
-
-                        if(eventHeaderType == "ping")
-                        {
-                            return true;
-                        }    
-
+                        Console.WriteLine($"Received github event: {eventHeaderType}");
+ 
                         using (JsonDocument doc = JsonDocument.Parse(payload))
                         {
                             string eventMessage = GitHubModule.FormatEventString(doc, eventHeaderType);
 
-                            Fatty.PrintToScreen(eventMessage, ConsoleColor.White);
-
-                            lock(RegistrationMutex)
+                            if (eventMessage.Length > 0)
                             {
-                                foreach(GitHubModule mod in ListenerModules)
+                                Fatty.PrintToScreen(eventMessage, ConsoleColor.White);
+
+                                lock (RegistrationMutex)
                                 {
-                                    if(mod.ShouldReportEvent(doc, eventHeaderType, eventMessage))
+                                    foreach (GitHubModule mod in ListenerModules)
                                     {
-                                        mod.ReportEvent(doc, eventMessage);
+                                        if (mod.ShouldReportEvent(doc, eventHeaderType, eventMessage))
+                                        {
+                                            mod.ReportEvent(doc, eventMessage);
+                                        }
                                     }
                                 }
                             }
