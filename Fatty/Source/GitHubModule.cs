@@ -1,16 +1,15 @@
-﻿using Microsoft.EntityFrameworkCore;
-using RestSharp;
-using RestSharp.Authenticators;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Text;
-using System.Text.RegularExpressions;
+using System.Text.Json;
 using System.Threading;
-using System.Timers;
-using static Fatty.GitHubModule;
 
 namespace Fatty
 {
@@ -65,186 +64,30 @@ namespace Fatty
             }
         }
 
-        [DataContract]
-        public class GitHubEvent
-        {
-            [DataMember(Name = "type")]
-            public string EventType;
-
-            [DataMember(Name = "actor")]
-            public GitHubActor Actor;
-
-            [DataMember(Name = "repo")]
-            public GitHubRepo Repo;
-
-            [DataMember(Name = "payload")]
-            public GitHubPayload Payload;
-
-            [DataMember(Name = "created_at")]
-            public DateTime CreatedDateTime;
-        }
-
-        static DataContractJsonSerializerSettings SerializerSettings;
-
-
-        [DataContract]
-        public class GitHubActor
-        {
-            [DataMember(Name = "display_login")]
-            public string DisplayName;
-
-            [DataMember(Name = "url")]
-            public string URL;
-        }
-
-        [DataContract]
-        public class GitHubRepo
-        {
-            [DataMember(Name = "name")]
-            public string RepoName;
-        }
-
-        [DataContract]
-        public class GitHubPayload
-        {
-            [DataMember(Name = "head")]
-            public string Head;
-
-            [DataMember(Name = "size")]
-            public int PayloadSize;
-
-            [DataMember(Name = "commits")]
-            public List<GitHubCommit> Commits;
-
-            [DataMember(Name = "action")]
-            public string ActionName;
-
-            [DataMember(Name = "issue")]
-            public GitHubIssue Issue;
-
-            [DataMember(Name = "comment")]
-            public GitHubComment Comment;
-
-            [DataMember(Name = "ref_type")]
-            public string RefType;
-
-            [DataMember(Name = "member")]
-            public GitHubMember Member;
-
-            [DataMember(Name = "release")]
-            public GitHubRelease Release;
-
-            [DataMember(Name = "pages")]
-            public List<GitHubPage> Pages;
-        }
-
-        [DataContract]
-        public class GitHubIssue
-        {
-            [DataMember(Name = "html_url")]
-            public string PageURL;
-
-            [DataMember(Name = "title")]
-            public string IssueTitle;
-        }
-
-        [DataContract]
-        public class GitHubComment
-        {
-            [DataMember(Name = "body")]
-            public string Body;
-
-            [DataMember(Name = "html_url")]
-            public string PageURL;
-        }
-
-        [DataContract]
-        public class GitHubCommit
-        {
-            [DataMember(Name = "sha")]
-            public string Hash;
-
-            [DataMember(Name = "message")]
-            public string Message;
-
-            [DataMember(Name = "url")]
-            public string URL;
-        }
-
-        [DataContract]
-        public class GitHubMember
-        {
-            [DataMember(Name = "login")]
-            public string Login;
-
-            [DataMember(Name = "name")]
-            public string Name;
-        }
-
-        [DataContract]
-        public class GitHubRelease
-        {
-            [DataMember(Name = "body")]
-            public string Body;
-
-            [DataMember(Name = "html_url")]
-            public string URL;
-        }
-
-        [DataContract]
-        public class GitHubPage
-        {
-            [DataMember(Name = "html_url")]
-            public string PageURL;
-
-            [DataMember(Name = "action")]
-            public string ActionName;
-
-            [DataMember(Name = "page_name")]
-            public string PageName;
-
-            [DataMember(Name = "title")]
-            public string Title;
-
-            [DataMember(Name = "summary")]
-            public string Summary;
-
-            [DataMember(Name = "sha")]
-            public string PageHash;
-
-        }
+        public static DataContractJsonSerializerSettings SerializerSettings { get; private set; }
 
         #endregion
 
-        class BatchedRequest : RestRequest
-        {
-            public BatchedRequest(string resource) : base(resource) { }
-
-            public List<(GitHubContext, Action<IRestResponse, GitHubContext>)> Listeners { get; set; }
-        }
-
-        class FattyRequest : RestRequest
-        {
-            public FattyRequest(string resource) : base(resource) { }
-            public object UserState { get; set; }
-        }
-
 
         private List<GitHubContext> ActiveChannelContexts;
-        private System.Timers.Timer PollTimer;
 
         public GitHubModule()
         {
             ActiveChannelContexts = new List<GitHubContext>();
 
-            // github uses iso 8601 which throws the default serializer settings for a loop
+            //github uses iso 8601 which throws the default serializer settings for a loop
             if (SerializerSettings == null)
             {
                 SerializerSettings = new DataContractJsonSerializerSettings();
                 SerializerSettings.DateTimeFormat = new DateTimeFormat("yyyy-MM-ddTHH:mm:ssZ");
             }
 
-            GitHubQueryScheduler.InitScheduler();
+            GitHubHttpListener.Init(this);
+        }
+
+        ~GitHubModule() 
+        {
+            GitHubHttpListener.RemoveListener(this);
         }
 
 
@@ -262,68 +105,6 @@ namespace Fatty
         {
             base.ChannelInit(channel);
 
-            Action<IRestResponse, GitHubContext> FirstResponseCallback = (r, c) =>
-            {
-                if (r.Request is BatchedRequest)
-                {
-                    BatchedRequest owningRequest = (BatchedRequest)r.Request;
-                    GitHubContext owningContext = c;
-
-                    if (r.IsSuccessful && owningContext != null)
-                    {
-                        owningContext.IsValidEndpoint = true;
-                        List<GitHubEvent> LatestEvents = FattyHelpers.DeserializeFromJsonString<List<GitHubEvent>>(r.Content, SerializerSettings);
-                        if (LatestEvents != null && LatestEvents.Count > 0)
-                        {
-                            owningContext.LastSeen = LatestEvents[0].CreatedDateTime;
-
-                            foreach (GitHubEvent evnt in LatestEvents)
-                            {
-                                if (evnt.EventType == "GollumEvent")
-                                {
-                                    foreach (GitHubPage page in evnt.Payload.Pages)
-                                    {
-                                        owningContext.LatestWikiHash.TryAdd(page.PageURL, page.PageHash);
-                                    }
-                                }
-                            }
-                        }
-
-                        var pollHeader = r.Headers.Single(header => { return header.Name == "X-Poll-Interval"; });
-                        int pollInterval = 60;
-                        if (pollHeader != null)
-                        {
-                            if (!int.TryParse((string)r.Headers.Single(header => { return header.Name == "X-Poll-Interval"; }).Value, out pollInterval))
-                            {
-                                // have to set again, since tryparse zeroes on failure
-                                pollInterval = 60;
-                            }
-
-                        }
-                        owningContext.PollInterval = pollInterval;
-
-                        var ETagHeader = r.Headers.Single(header => { return header.Name == "ETag"; });
-#nullable enable
-                        string? ETag = null;
-                        if (ETagHeader is not null)
-                        {
-                            ETag = (string?)ETagHeader.Value;
-                        }
-                        owningContext.Etag = ETag;
-#nullable disable
-                    }
-                    else
-                    {
-                        Fatty.PrintWarningToScreen($"GitHub first contact error: {r.StatusCode}: {r.StatusDescription} - {r.ErrorMessage}", Environment.StackTrace);
-
-                        if (owningContext != null)
-                        {
-                            owningContext.IsValidEndpoint = false;
-                            Fatty.PrintWarningToScreen($"{owningContext.ProjectEndpoint} in {owningContext.ChannelName} on {owningContext.ServerName}");
-                        }
-                    }
-                }
-            };
 
             GitHubContextListing contextListing = FattyHelpers.DeserializeFromPath<GitHubContextListing>("GitHub.cfg");
 
@@ -335,238 +116,291 @@ namespace Fatty
                     ActiveChannelContexts.Add(ghContext);
                 }
             }
+        }
 
+        void ReportEvent(JsonDocument doc, string eventText)
+        {
+            OwningChannel.SendChannelMessage(eventText);
+        }
 
-            foreach (GitHubContext ghContext in ActiveChannelContexts)
+        bool ShouldReportEvent(JsonDocument doc)
+        {
+            try
             {
-                GitHubQueryScheduler.ScheduleQuery(ghContext, FirstResponseCallback);
+                string repoURL = doc.RootElement.GetProperty("repository").GetProperty("full_name").ToString();
+                foreach (GitHubContext gitHubContext in ActiveChannelContexts)
+                {
+                    if (gitHubContext.ProjectEndpoint.ToLower() == repoURL.ToLower())
+                    {
+                        return true;
+                    }
+                }
+                return false;
             }
-
-            PollTimer = new System.Timers.Timer(TimeSpan.FromSeconds(60).TotalMilliseconds);
-            PollTimer.Elapsed += PollTimerElapsed;
-            PollTimer.AutoReset = true;
-            PollTimer.Start();
+            catch (Exception ex)
+            {
+                Fatty.PrintWarningToScreen(ex);
+                return false;
+            }
         }
 
 
-        void PollTimerElapsed(object sender, ElapsedEventArgs e)
+        private class CommonFields
         {
-            Action<IRestResponse, GitHubContext> PollEventsCallback = (r, c) =>
+            public string RepoName;
+            public string ActorName;
+            public CommonFields(JsonElement root)
             {
-                if (r.Request is BatchedRequest)
-                {
-                    BatchedRequest owningRequest = (BatchedRequest)r.Request;
-                    GitHubContext owningContext = c;
+                try
+                { RepoName = root.GetProperty("repository").GetProperty("full_name").GetString(); }
+                catch { }
+                try
+                { ActorName = root.GetProperty("sender").GetProperty("login").GetString(); }
+                catch { }
 
-                    if (r.IsSuccessful && owningContext != null)
-                    {
-                        List<GitHubEvent> LatestEvents = FattyHelpers.DeserializeFromJsonString<List<GitHubEvent>>(r.Content, SerializerSettings);
-                        List<GitHubEvent> UnseenEvents = new List<GitHubEvent>();
+            }
+        }
 
-                        if (LatestEvents != null && LatestEvents.Count > 0)
-                        {
-                            foreach (GitHubEvent latestEvent in LatestEvents)
-                            {
-                                if (latestEvent.CreatedDateTime <= owningContext.LastSeen)
-                                {
-                                    break;
-                                }
-                                if (owningContext.LastSeen < latestEvent.CreatedDateTime)
-                                {
-                                    owningContext.LastSeen = latestEvent.CreatedDateTime;
-                                }
-
-                                UnseenEvents.Add(latestEvent);
-                            }
-
-                            UnseenEvents.Reverse();
-                            EmitEventMessages(UnseenEvents, owningContext);
-
-                            UnseenEvents.ForEach(e => PostReportEvent(e, owningContext));
-                        }
-                    }
-                    else
-                    {
-                        Fatty.PrintWarningToScreen($"GitHub event poll request error: {r.StatusCode}: {r.StatusDescription} - {r.ErrorMessage}", Environment.StackTrace);
-                        if (owningContext != null)
-                        {
-                            Fatty.PrintWarningToScreen($"{owningContext.ProjectEndpoint} in {owningContext.ChannelName} on {owningContext.ServerName}");
-                        }
-                    }
-                }
-            };
-
+        public static string FormatEventString(JsonDocument input, string eventType)
+        {
+            string formattedMessage = "dunno, lol";
             try
             {
-                foreach (GitHubContext ghContext in ActiveChannelContexts)
+                JsonElement root = input.RootElement;
+                CommonFields commonFields = new CommonFields(root);
+
+                
+                switch (eventType)
                 {
-                    if (ghContext.IsValidEndpoint)
-                    {
-                        GitHubQueryScheduler.ScheduleQuery(ghContext, PollEventsCallback);
-                    }
+                    case "commit_comment":
+                        {
+                            var comment = root.GetProperty("comment");
+                            string user = root.GetProperty("sender").GetProperty("login").GetString();
+                            string action = root.GetProperty("action").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
+                            string url = comment.GetProperty("html_url").GetString();
+                            string body = comment.GetProperty("body").GetString();
+                            const int previewLength = 26;
+                            string bodySnippet = body.Substring(0, Math.Min(body.Length, previewLength));
+                            if (body.Length > previewLength)
+                                bodySnippet += "...";
+                            formattedMessage = $"{commonFields.ActorName} {action} a commit comment in {repo} - {url} //{bodySnippet}";
+                        }
+                        break;
+                    case "create":
+                        {
+                            string user = root.GetProperty("sender").GetProperty("login").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
+                            string type = root.GetProperty("ref_type").GetString();
+                            string description = root.GetProperty("description").GetString();
+                            formattedMessage = $"{user} created {type} in {repo} - {description}";
+                        }
+                        break;
+                    case "discussion":
+                        {
+                            var discussion = root.GetProperty("discussion");
+                            string user = root.GetProperty("sender").GetProperty("login").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
+                            string discussionURL = discussion.GetProperty("html_url").GetString();
+                            string discussionTitle = discussion.GetProperty("title").GetString();
+                            string action = root.GetProperty("action").GetString();
+                            formattedMessage = $"{user} {action} discussion \"{repo} - {discussionTitle}\" - {discussionURL}";
+                        }
+                        break;
+                    case "discussion_comment":
+                        {
+                            var discussion = root.GetProperty("discussion");
+                            var comment = root.GetProperty("comment");
+                            string user = root.GetProperty("sender").GetProperty("login").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
+                            string commentUrl = comment.GetProperty("html_url").GetString();
+                            string discussionTitle = discussion.GetProperty("title").GetString();
+                            string action = root.GetProperty("action").GetString();
+                            formattedMessage = $"{user} {action} discussion comment on \"{repo}/{discussionTitle}\" - {commentUrl}";
+                        }
+                        break;
+                    case "repository":
+                        {
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
+                            string action = root.GetProperty("action").GetString();
+                            string user = root.GetProperty("sender").GetProperty("login").GetString();
+                            string url =  root.GetProperty("repository").GetProperty("html_url").GetString();
+                            formattedMessage = $"{user} {action} {repo} - {url}";
+                        }
+                        break;
+                    case "star":
+                        {
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
+                            string action = root.GetProperty("action").GetString();
+                            string user = root.GetProperty("sender").GetProperty("login").GetString();
+                            string url = root.GetProperty("repository").GetProperty("html_url").GetString();
+                            formattedMessage = $"{user} {action} star for {repo} - {url}";
+                        }
+                        break;
+                    case "fork":
+                        {
+                            string user = root.GetProperty("sender").GetProperty("login").GetString();
+                            string url = root.GetProperty("repository").GetProperty("html_url").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
+                            formattedMessage = $"{user} forked {repo} - {url}";
+                        }
+                        break;
+                    case "gollum":
+                        {
+                            var pages = root.GetProperty("pages");
+                            string action = pages.GetProperty("action").GetString();
+                            string pageTitle = pages.GetProperty("title").GetString();
+                            string pageName = pages.GetProperty("page_name").GetString();
+                            string pageUrl = pages.GetProperty("html_url").GetString();
+                            string user = root.GetProperty("sender").GetProperty("login").GetString();
+                            string repoUrl = root.GetProperty("repository").GetProperty("html_url").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
+                            formattedMessage = $"{user} {action} page.  {repo}/{pageTitle} \"{pageName}\" - {pageUrl}";
+                        }
+                        break;
+                    case "issue_comment":
+                        {
+                            var comment = root.GetProperty("comment");
+                            var issue = root.GetProperty("issue");
+                            string action = root.GetProperty("action").GetString();
+                            string commentURL = comment.GetProperty("html_url").GetString();
+                            string user = root.GetProperty("sender").GetProperty("login").GetString();
+                            string issueTitle = issue.GetProperty("title").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
+                            formattedMessage = $"{user} {action} comment on {repo}/{issueTitle}. {commentURL}";
+                        }
+                        break;
+                    case "issues":
+                        {
+                            var issue = root.GetProperty("issue");
+                            string user = root.GetProperty("sender").GetProperty("login").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
+                            string action = root.GetProperty("action").GetString();
+                            string issueTitle = issue.GetProperty("title").GetString();
+                            string issueURL = issue.GetProperty("html_url").GetString();
+                            formattedMessage = $"{user} {action} issue \"{repo}/{issueTitle}\". {issueURL}";
+                        }
+                        break;
+                    case "pull_request":
+                        {
+                            var pullRequest = root.GetProperty("pull_request");
+                            string requestTitle = pullRequest.GetProperty("title").GetString();
+                            string requestURL = pullRequest.GetProperty("html_url").GetString();
+                            string user = root.GetProperty("sender").GetProperty("login").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
+                            string action = root.GetProperty("action").GetString();
+                            formattedMessage = $"{user} {action} pull request. \"{repo}/{requestTitle}\". {requestURL}";
+                        }
+                        break;
+                    case "push":
+                        {
+                            var commits = root.GetProperty("commits");
+                            string user = root.GetProperty("sender").GetProperty("login").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
+                            JsonElement[] commitIterator = commits.EnumerateArray().ToArray();
+                            int commitCount = commitIterator.Length;
+                            {
+                                StringBuilder messageAccumulator = new StringBuilder();
+
+                                messageAccumulator.Append($"{user} pushed {commitCount} commits to {repo}: ");
+                                for (int i = 0; i < commitCount; ++i)
+                                {
+                                    string hash = commitIterator[i].GetProperty("id").ToString();
+                                    string message = commitIterator[i].GetProperty("message").ToString();
+                                    string commitURL = $"https://www.github.com/{repo}/commit/{hash.Substring(0, 8)}";
+                                    messageAccumulator.Append($"\"{message}\" - {commitURL}");
+                                    if (i != commitCount - 1)
+                                    {
+                                        messageAccumulator.Append(" || ");
+                                    }
+                                }
+
+                                formattedMessage = messageAccumulator.ToString();
+                            }
+
+                        }
+                        break;
+                    default:
+                        {
+                            formattedMessage = $"Unhandled event type: {eventType} by {commonFields.ActorName}";
+                        }
+                        break;
                 }
             }
             catch (Exception ex)
             {
-                Fatty.PrintWarningToScreen($"Github Issue: {ex.Message}", Environment.StackTrace);
-            }
-        }
-
-        void EmitEventMessages(List<GitHubEvent> events, GitHubContext context)
-        {
-            foreach (GitHubEvent unseen in events)
-            {
-                if (ShouldReportEvent(unseen, context))
-                {
-                    OwningChannel.SendChannelMessage(FormatEventString(unseen, context));
-                    if (events.Count > 1)
-                    {
-                        Thread.Sleep(500);
-                    }
-                }
-            }
-        }
-
-        bool ShouldReportEvent(GitHubEvent evnt, GitHubContext context)
-        {
-
-            return true;
-        }
-
-        // function for handling events after they've been reported
-        void PostReportEvent(GitHubEvent evnt, GitHubContext context)
-        {
-            switch (evnt.EventType)
-            {
-                case "GollumEvent":
-                    PostReportGollumEvent(evnt, context);
-                    break;
-            }
-        }
-
-        void PostReportGollumEvent(GitHubEvent evnt, GitHubContext context)
-        {
-            foreach (var page in evnt.Payload.Pages)
-            {
-                context.LatestWikiHash[page.PageURL] = page.PageHash;
-            }
-        }
-
-        string FormatEventString(GitHubEvent evnt, GitHubContext context)
-        {
-            switch (evnt.EventType)
-            {
-                case "PushEvent":
-                    return FormatPushEventString(evnt);
-                case "IssuesEvent":
-                    return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} issue \"{evnt.Payload.Issue.IssueTitle}\" - {evnt.Payload.Issue.PageURL}";
-                case "IssueCommentEvent":
-                    return FormatIssueCommentEventString(evnt);
-                case "PullRequestEvent":
-                    return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} pull request for {evnt.Repo.RepoName}";
-                case "DeleteEvent":
-                    return $"{evnt.Actor.DisplayName} Deleted {evnt.Payload.RefType} from {evnt.Repo.RepoName}";
-                case "CommitCommentEvent":
-                    return $"{evnt.Actor.DisplayName} made comment on commit in {evnt.Repo.RepoName} - {evnt.Payload.Comment.PageURL}";
-                case "CreateEvent":
-                    return $"{evnt.Actor.DisplayName} created {evnt.Payload.RefType} in {evnt.Repo.RepoName}";
-                case "ForkEvent":
-                    return $"{evnt.Actor.DisplayName} forked {evnt.Repo.RepoName}";
-                case "MemberEvent":
-                    return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} member {evnt.Payload.Member.Name} \"{evnt.Payload.Member.Login}\" to {evnt.Repo.RepoName}";
-                case "PublicEvent":
-                    return $"{evnt.Actor.DisplayName} made {evnt.Repo.RepoName} public";
-                case "WatchEvent":
-                    return $"{evnt.Actor.DisplayName} started watching {evnt.Repo.RepoName}!!";
-                case "ReleaseEvent":
-                    return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} release in {evnt.Repo.RepoName}. \"{evnt.Payload.Release.Body}\" -- {evnt.Payload.Release.URL}";
-                case "GollumEvent":
-                    return FormatGollumEventString(evnt, context);
-
-                default:
-                    // see "ShouldReportEvent"
-                    return $"Unhandled Event \"{evnt.EventType}\" Triggered by {evnt.Actor.DisplayName}! Fix or ignore.";
-            }
-        }
-
-        string FormatPushEventString(GitHubEvent evnt)
-        {
-            int commitCount = evnt.Payload.PayloadSize;
-            StringBuilder messageAccumulator = new StringBuilder();
-
-            messageAccumulator.Append($"{evnt.Actor.DisplayName} pushed {evnt.Payload.PayloadSize} commits to {evnt.Repo.RepoName}: ");
-            for (int i = 0; i < commitCount; ++i)
-            {
-                string commitURL = $"https://www.github.com/{evnt.Repo.RepoName}/commit/{evnt.Payload.Commits[i].Hash.Substring(0, 8)}";
-                messageAccumulator.Append($"\"{evnt.Payload.Commits[i].Message}\" - {commitURL}");
-                if (i != commitCount - 1)
-                {
-                    messageAccumulator.Append(" || ");
-                }
+                Fatty.PrintWarningToScreen(ex);
+                formattedMessage = $"exception while handling {eventType}. Check logs";
             }
 
-            return messageAccumulator.ToString();
+            return formattedMessage;
         }
 
-        string FormatIssueCommentEventString(GitHubEvent evnt)
-        {
-            const int previewLength = 26;
-            string bodySnippet = evnt.Payload.Comment.Body.Substring(0, Math.Min(evnt.Payload.Comment.Body.Length, previewLength));
-            if (evnt.Payload.Comment.Body.Length > previewLength)
-                bodySnippet += "...";
-            return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} comment \"{evnt.Payload.Issue.IssueTitle}\" - {evnt.Payload.Issue.PageURL} // {bodySnippet}";
-        }
+        //string FormatRestEventString(GitHubEvent evnt, GitHubContext context)
+        //{
+        //    switch (evnt.EventType)
+        //    {
+        //        case "PushEvent":
+        //            return FormatPushEventString(evnt);
+        //        case "IssuesEvent":
+        //            return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} issue \"{evnt.Payload.Issue.IssueTitle}\" - {evnt.Payload.Issue.PageURL}";
+        //        case "IssueCommentEvent":
+        //            return FormatIssueCommentEventString(evnt);
+        //        case "PullRequestEvent":
+        //            return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} pull request for {evnt.Repo.RepoName}";
+        //        case "DeleteEvent":
+        //            return $"{evnt.Actor.DisplayName} Deleted {evnt.Payload.RefType} from {evnt.Repo.RepoName}";
+        //        case "CommitCommentEvent":
+        //            return $"{evnt.Actor.DisplayName} made comment on commit in {evnt.Repo.RepoName} - {evnt.Payload.Comment.PageURL}";
+        //        case "CreateEvent":
+        //            return $"{evnt.Actor.DisplayName} created {evnt.Payload.RefType} in {evnt.Repo.RepoName}";
+        //        case "ForkEvent":
+        //            return $"{evnt.Actor.DisplayName} forked {evnt.Repo.RepoName}";
+        //        case "MemberEvent":
+        //            return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} member {evnt.Payload.Member.Name} \"{evnt.Payload.Member.Login}\" to {evnt.Repo.RepoName}";
+        //        case "PublicEvent":
+        //            return $"{evnt.Actor.DisplayName} made {evnt.Repo.RepoName} public";
+        //        case "WatchEvent":
+        //            return $"{evnt.Actor.DisplayName} started watching {evnt.Repo.RepoName}!!";
+        //        case "ReleaseEvent":
+        //            return $"{evnt.Actor.DisplayName} {evnt.Payload.ActionName} release in {evnt.Repo.RepoName}. \"{evnt.Payload.Release.Body}\" -- {evnt.Payload.Release.URL}";
+        //        case "GollumEvent":
+        //            return FormatGollumEventString(evnt, context);
 
-        string FormatGollumEventString(GitHubEvent evnt, GitHubContext context)
-        {
-            string ReturnString;
-            if (evnt.Payload.Pages.Count > 0)
-            {
-                GitHubPage firstPage = evnt.Payload.Pages[0];
-                string oldHash;
-                if (context.LatestWikiHash.TryGetValue(firstPage.PageURL, out oldHash))
-                {
-                    string compareURL = $"{firstPage.PageURL}/_compare/{oldHash}...{firstPage.PageHash}";
-                    ReturnString = $"{evnt.Actor.DisplayName} {firstPage.ActionName} \"{firstPage.Title}\" Wiki page : {compareURL}";
-                }
-                else
-                {
-                    // just return the regular url if we haven't seen the old hash and can't make a comparison url
-                    ReturnString = $"{evnt.Actor.DisplayName} {evnt.Payload.Pages[0].ActionName} \"{evnt.Payload.Pages[0].Title}\" Wiki page : {firstPage.PageURL}";
-                }
-            }
-            else
-            {
-                ReturnString = $"{evnt.Actor.DisplayName} made some change to the wiki, but there are no pages associated with the change. This should never happen";
-            }
-
-            return ReturnString;
-        }
-
+        //        default:
+        //            // see "ShouldReportEvent"
+        //            return $"Unhandled Event \"{evnt.EventType}\" Triggered by {evnt.Actor.DisplayName}! Fix or ignore.";
+        //    }
+        //}
+        
         public void GitHubLimitCommand(string ircUser, string ircChannel, string message)
         {
             GitHubContext firstContext = ActiveChannelContexts[0];
             if (firstContext != null)
             {
-                RestClient client = new RestClient("https://api.github.com");
-                var authen = new JwtAuthenticator(firstContext.AccessToken);
-                client.Authenticator = authen;
+                HttpClient client = new HttpClient()
+                {
+                    BaseAddress = new Uri("https://api.github.com")
+                };
 
-                BatchedRequest request = new BatchedRequest("rate_limit");
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", firstContext.AccessToken);
+                client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("FattyBot", "0.3"));
 
-                var response = client.Execute(request);
-                if (response.IsSuccessful)
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "rate_limit");
+
+                var response = client.Send(request);
+                if (response.IsSuccessStatusCode)
                 {
                     List<string> LimitStrings = new List<string>();
                     foreach (var item in response.Headers)
                     {
-                        if (item.Name.Contains("limit", StringComparison.OrdinalIgnoreCase))
+                        if (item.Key.Contains("limit", StringComparison.OrdinalIgnoreCase))
                         {
                             try
                             {
-                                string itemName = item.Name;
-                                string itemValue = (string)item.Value;
-                                if (item.Name == "X-RateLimit-Reset")
+                                string itemName = item.Key;
+                                string itemValue = item.Value.First();
+                                if (item.Key == "X-RateLimit-Reset")
                                 {
                                     long unixTime = Convert.ToInt64(itemValue);
                                     DateTimeOffset dateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(unixTime);
@@ -601,94 +435,113 @@ namespace Fatty
             }
         }
 
-
-        static public class GitHubQueryScheduler
+        static public class GitHubHttpListener
         {
-            private static Mutex mut = new Mutex();
-            private static Dictionary<string, List<(GitHubContext, Action<IRestResponse, GitHubContext>)>> GithubQueue = new();
-            private static System.Timers.Timer PollTimer = null;
+            private static Mutex initializerMutex = new Mutex();
+            private static Mutex RegistrationMutex = new Mutex();
+            private static Thread GithubListenerThread;
+            private static List<GitHubModule> ListenerModules = new List<GitHubModule>(); 
 
-            public static void InitScheduler()
+            public static void Init(GitHubModule ListenerModule)
             {
-                lock (mut)
+                lock (initializerMutex)
                 {
-                    if (PollTimer == null)
+                    if (GithubListenerThread == null)
                     {
-                        PollTimer = new System.Timers.Timer(2000);
-                        PollTimer.Elapsed += ExecuteQueries;
-                        PollTimer.AutoReset = true;
-                        PollTimer.Start();
+                        GithubListenerThread = new Thread(new ThreadStart(Listen));
+                        GithubListenerThread.Name = "GithubListner";
+                        GithubListenerThread.Start();
                     }
                 }
-            }
-            public static void ScheduleQuery(GitHubContext context, Action<IRestResponse, GitHubContext> callback)
-            {
-                lock (mut)
+                lock(RegistrationMutex)
                 {
-                    // basically shit-hashing based on relevant data
-                    // don't change without also fixing access token assumption in execute queries
-                    string mapKey = context.ProjectEndpoint + context.AccessToken;
-                    List<(GitHubContext, Action<IRestResponse, GitHubContext>)> current;
-                    if (!GithubQueue.TryGetValue(mapKey, out current))
-                    {
-                        var newList = new List<(GitHubContext, Action<IRestResponse, GitHubContext>)>();
-                        newList.Add((context, callback));
-                        GithubQueue[mapKey] = newList;
-                    }
-                    else
-                    {
-                        current.Add((context, callback));
-                    }
+                    ListenerModules.Add(ListenerModule);
                 }
             }
-
-            private static void ExecuteQueries(object sender, ElapsedEventArgs e)
+            public static void Listen()
             {
-                Action<IRestResponse> callback = r =>
+                while (true)
                 {
-                    if (r.Request is BatchedRequest)
+                    try
                     {
-                        BatchedRequest owningRequest = (BatchedRequest)r.Request;
-                        var listeners = owningRequest.Listeners;
+                        string testURL = "http://*:4950/";
+                        HttpListener listener = new HttpListener();
+                        listener.Prefixes.Add(testURL);
+                        listener.Start();
+                        Fatty.PrintToScreen($"Listening for GitHub webhooks on \"{testURL}\"", ConsoleColor.Cyan);
 
-                        foreach (var listener in listeners)
+                        while (true)
                         {
-                            listener.Item2.Invoke(r, listener.Item1);
+                            HttpListenerContext context = listener.GetContext();
+                            HttpListenerRequest request = context.Request;
+
+                            if (request.HttpMethod == "POST")
+                            {
+                                HandlePost(request);
+
+                                context.Response.StatusCode = 200;
+                                context.Response.Close();
+                            }
+                            else
+                            {
+                                // Respond with a 405 Method Not Allowed if the request is not a POST
+                                context.Response.StatusCode = 405;
+                                context.Response.Close();
+                            }
                         }
                     }
-                };
+                    catch (Exception ex)
+                    {
+                        Fatty.PrintWarningToScreen(ex);
+                    }
 
-                // forgive me father
-                IEnumerable<KeyValuePair<string, List<(GitHubContext, Action<IRestResponse, GitHubContext>)>>> queriesCopy;
-                // don't want to hold this mutex for too long, so make a copy of the queue
-                lock (mut)
+                    // rest 10 seconds before trying to restart listener thread
+                    Thread.Sleep(10000);
+                }
+            }
+
+            public static bool HandlePost(HttpListenerRequest request)
+            {
+                try
                 {
-                    queriesCopy = GithubQueue.ToArray();
-                    GithubQueue.Clear();
+                    // Get the event type from the GitHub headers
+                    string eventHeaderType = request.Headers["X-GitHub-Event"];
+
+                    using (StreamReader reader = new StreamReader(request.InputStream, request.ContentEncoding))
+                    {
+                        string payload = reader.ReadToEnd();
+                        Console.WriteLine($"Received github event: {eventHeaderType}");
+                        using (JsonDocument doc = JsonDocument.Parse(payload))
+                        {
+                            string eventMessage = GitHubModule.FormatEventString(doc, eventHeaderType);
+
+                            Fatty.PrintToScreen(eventMessage, ConsoleColor.White);
+
+                            lock(RegistrationMutex)
+                            {
+                                foreach(GitHubModule mod in ListenerModules)
+                                {
+                                    if(mod.ShouldReportEvent(doc))
+                                    {
+                                        mod.ReportEvent(doc, eventMessage);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Fatty.PrintWarningToScreen(ex);
+                    return false;
                 }
 
-                foreach (var query in queriesCopy)
-                {
-                    // they all have the same access token, guaranteed by hash key upon insertion
-                    GitHubContext gitHubContext = query.Value[0].Item1;
+                return true;
+            }
 
-
-                    RestClient client = new RestClient(gitHubContext.ProjectEndpoint);
-                    var authen = new JwtAuthenticator(gitHubContext.AccessToken);
-                    client.Authenticator = authen;
-
-                    BatchedRequest request = new BatchedRequest("events");
-
-                    // eventually set this up and only dispatch a real poll if the info has changed
-                    //if (gitHubContext.Etag != null)
-                    //{
-                    //    request.AddHeader("If-None-Match", gitHubContext.Etag);
-                    //}
-
-                    request.Listeners = query.Value;
-
-                    client.ExecuteAsync(request, callback);
-                }
+            public static bool RemoveListener(GitHubModule module)
+            {
+                return ListenerModules.Remove(module);
             }
         }
     }

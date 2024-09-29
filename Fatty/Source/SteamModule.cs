@@ -1,6 +1,6 @@
-﻿using RestSharp;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -152,15 +152,18 @@ namespace Fatty
         {
             try
             {
-                RestClient client = new RestClient(APIBaseAddress);
-
-                RestRequest request = GetNeotokyoServerRequest();
-
-                var result = client.Execute(request);
-
-                if (result.IsSuccessful)
+                HttpClient client = new HttpClient()
                 {
-                    SteamServerResult pollResult = FattyHelpers.DeserializeFromJsonString<SteamServerResult>(result.Content);
+                    BaseAddress = new Uri(APIBaseAddress)
+                };
+
+                HttpRequestMessage request = GetNeotokyoServerRequest();
+
+                var result = client.Send(request);
+
+                if (result.IsSuccessStatusCode)
+                {
+                    SteamServerResult pollResult = FattyHelpers.DeserializeFromJsonString<SteamServerResult>(result.Content.ToString());
                     SteamServerResponse pollResponse = pollResult.Response;
                     bool reported = false;
 
@@ -205,24 +208,31 @@ namespace Fatty
 
         async void PollNeotokyoServers(SteamChannelContext context, CancellationToken cancel)
         {
-            RestClient client = new RestClient(APIBaseAddress);
+            HttpClient client = new HttpClient
+            {
+                BaseAddress = new Uri(APIBaseAddress)
+            };
 
-            RestRequest request = GetNeotokyoServerRequest();
 
             TimeSpan PollInterval = TimeSpan.FromMinutes(Config.PollFrequencyMinutes);
             TimeSpan SleepTime = TimeSpan.FromMinutes(context.MessageCooldownMinutes);
 
+            TimeSpan TimeToSleep;
             while (!cancel.IsCancellationRequested)
             {
+                TimeToSleep = PollInterval;
                 try
                 {
-                    var result = await client.ExecuteAsync(request);
-                    if (result.IsSuccessful)
+                    HttpRequestMessage request = GetNeotokyoServerRequest();
+                    var result = await client.SendAsync(request);
+                    
+                    if (result.IsSuccessStatusCode)
                     {
                         List<SteamGameServer> PopulatedServers = new List<SteamGameServer>();
                         try
                         {
-                            SteamServerResult pollResult = FattyHelpers.DeserializeFromJsonString<SteamServerResult>(result.Content);
+                            // todo: read content properly instead of doing this weird string transcode
+                            SteamServerResult pollResult = FattyHelpers.DeserializeFromJsonString<SteamServerResult>(result.Content.ToString());
                             SteamServerResponse pollResponse = pollResult.Response;
                             if (pollResponse != null)
                             {
@@ -254,30 +264,25 @@ namespace Fatty
                                 OwningChannel.SendChannelMessage($"{PopulatedServers.Count} Neotokyo servers have {context.MinPlayerThreshold} or more nerds in them");
                             }
 
-                            await Task.Delay(SleepTime);
+                            TimeToSleep = SleepTime;
                         }
-                        else
-                        {
-                            await Task.Delay(PollInterval);
-                        }
-                    }
-                    else
-                    {
-                        await Task.Delay(PollInterval);
                     }
                 }
                 catch(Exception ex)
                 {
                     Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
                 }
+                await Task.Delay(TimeToSleep);
             }
         }
 
-        private RestRequest GetNeotokyoServerRequest()
+        private HttpRequestMessage GetNeotokyoServerRequest()
         {
-            RestRequest request = new RestRequest(ServerListEndpoint);
-            request.AddQueryParameter("key", Config.APIKey);
-            request.AddQueryParameter("filter", FilterParams);
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, ServerListEndpoint);
+            //request.AddQueryParameter("key", Config.APIKey);
+            request.Properties["key"] = Config.APIKey;
+            //request.AddQueryParameter("filter", FilterParams);
+            request.Properties["filter"] = FilterParams;
 
             return request;
         }

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Runtime.Serialization;
-using RestSharp;
 
 namespace Fatty
 {
@@ -57,24 +57,27 @@ namespace Fatty
             Config = FattyHelpers.DeserializeFromPath<TDAmeritradeConfig>("TDAmeritrade.cfg");
             PostAccessTokenResponse oldResponse = FattyHelpers.DeserializeFromPath<PostAccessTokenResponse>("AmeritradeTokens.pls");
 
-            //string code = HttpUtility.UrlDecode("");
-            RestClient client = new RestClient(PostAccessTokenURL);
+            HttpClient client = new HttpClient
+            {
+                BaseAddress = new Uri(PostAccessTokenURL)
+            };
 
-            RestRequest request = new RestRequest(Method.POST);
-            request.AddParameter("grant_type", "refresh_token");
-            request.AddParameter("refresh_token", oldResponse.RefreshToken);
-            request.AddParameter("access_type", "offline");
-            request.AddParameter("client_id", Config.ClientID);
-            request.AddParameter("redirect_uri", Config.RedirectURI);
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, (Uri)null);
+            request.Properties["grant_type"] = "refresh_token";
+            request.Properties["refresh_token"] = oldResponse.RefreshToken;
+            request.Properties["access_type"] = "offline";
+            request.Properties["client_id"] = Config.ClientID;
+            request.Properties["redirect_uri"] = Config.RedirectURI;
 
             // todo: async this
-            IRestResponse response = client.Execute(request);
-            if (response.IsSuccessful)
+            HttpResponseMessage response = client.Send(request);
+            if (response.IsSuccessStatusCode)
             {
                 Fatty.PrintToScreen("Ameritrade Authentication Sucessful");
-                PostAccessTokenResponse result = FattyHelpers.DeserializeFromJsonString<PostAccessTokenResponse>(response.Content);
+                // todo: handle without converting to string if possible
+                PostAccessTokenResponse result = FattyHelpers.DeserializeFromJsonString<PostAccessTokenResponse>(response.Content.ToString());
                 InitSuccess = true;
-                System.IO.File.WriteAllText(@"AmeritradeTokens.pls", response.Content);
+                System.IO.File.WriteAllText(@"AmeritradeTokens.pls", response.Content.ToString());
                 Fatty.PrintToScreen("Ameritrade Access expires in {0} seconds\nRefreshToken Expires in {1} seconds", result.AccessExpiresInSeconds, result.RefreshExpiresInSeconds);
                 //RefreshTokenTimer = new Timer(;
             }

@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Json;
+using System.Reflection;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Text;
@@ -109,6 +111,25 @@ namespace Fatty
         public static int GetMessageOverhead(string source)
         {
             return 20;
+        }
+
+        public static List<Type> GetAllDerivedClasses<TBase>()
+        {
+            // Get the assembly containing the base class
+            Assembly assembly = Assembly.GetAssembly(typeof(TBase));
+            List<Type> derivedClasses = new List<Type>();
+
+            // Iterate through all types in the assembly
+            foreach (Type type in assembly.GetTypes())
+            {
+                // Check if the type is a class, not abstract, and a subclass of the base class
+                if (type.IsClass && !type.IsAbstract && type.IsSubclassOf(typeof(TBase)))
+                {
+                    derivedClasses.Add(type);
+                }
+            }
+
+            return derivedClasses;
         }
 
     }
