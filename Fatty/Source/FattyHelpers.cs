@@ -108,11 +108,10 @@ namespace Fatty
             }
         }
 
-        // todo: implement
         public static int GetMessageOverhead(string source, string messageType = "PRIVMSG", bool bIsTwitchServer = false)
         {
             // twitch servers have a 500 character limitation opposed to the regular 512, so we add 12 to overhead to account for that
-            return source.Length + messageType.Length + (bIsTwitchServer ? 12 : 0);
+            return source.Length + 1 + messageType.Length + (bIsTwitchServer ? 12 : 0);
         }
 
         public static bool StringContainsMulti(string input, string[] searchStrings, StringComparison compareType = StringComparison.Ordinal)
