@@ -408,7 +408,7 @@ namespace Fatty
                                     string hash = commitIterator[0].GetProperty("id").ToString();
                                     string message = commitIterator[0].GetProperty("message").ToString();
                                     string commitURL = $"https://www.github.com/{repo}/commit/{hash.Substring(0, 8)}";
-                                    messageAccumulator.Append($"{user} pushed a commit to {repo}.\"{message}\" - {commitURL}");
+                                    messageAccumulator.Append($"{user} pushed a commit to {repo}:\"{message}\" - {commitURL}");
                                 }
                                 else
                                 {
