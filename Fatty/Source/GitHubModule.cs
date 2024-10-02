@@ -146,44 +146,71 @@ namespace Fatty
 
         bool DoesEventPassFilter(JsonDocument doc, string eventHeaderType, string eventMessage)
         {
-            if(eventMessage.Length == 0)
+            if (eventMessage.Length == 0)
             {
                 return false;
             }
 
-            // basically ignore most check messages, unless there's a failure
-            if (eventHeaderType == "check_run")
+            switch (eventHeaderType)
             {
-                return false;
+                case "check_run":
+                    return false;
+
+                // delete messages are handled by push
+                case "delete":
+                    return false;
+
+                case "check_suite":
+                    {
+                        return false;
+                        // lol maybe we'll use this someday
+                        //JsonElement root = doc.RootElement;
+                        //string status = root.GetProperty("status").GetString();
+                        //if (status != "completed")
+                        //{
+                        //    return false;
+                        //}
+
+                        //// conclusion only valid if status is completed
+                        //string conclusion = root.GetProperty("conclusion").GetString();
+                        //if(conclusion == "success" || conclusion == "neutral")
+                        //{
+                        //    return false; 
+                        //}
+                    }
+
+                case "issues":
+                    {
+                        JsonElement root = doc.RootElement;
+                        string action = root.GetProperty("action").GetString();
+                        string[] validActions = { "opened", "closed", "reopened" };
+                        return FattyHelpers.StringContainsMulti(action, validActions, StringComparison.OrdinalIgnoreCase);
+                    }
+
+                case "issue_comment":
+                    {
+                        JsonElement root = doc.RootElement;
+                        string action = root.GetProperty("action").GetString();
+                        string[] validActions = { "created" };
+                        return FattyHelpers.StringContainsMulti(action, validActions, StringComparison.OrdinalIgnoreCase);
+                    }
+
+                case "pull_request":
+                    {
+                        JsonElement root = doc.RootElement;
+                        string action = root.GetProperty("action").GetString();
+                        string[] validActions = { "opened", "closed", "reopened" };
+                        return FattyHelpers.StringContainsMulti(action, validActions, StringComparison.OrdinalIgnoreCase);
+                    }
+
+                case "milestone":
+                    {
+                        JsonElement root = doc.RootElement;
+                        string action = root.GetProperty("action").GetString();
+                        string[] validActions = { "created", "closed", "opened" };
+                        return FattyHelpers.StringContainsMulti(action, validActions, StringComparison.OrdinalIgnoreCase);
+                    }
             }
-
-            // delete messages are handled by push
-            if (eventHeaderType == "delete")
-            {
-                return false;
-            }
-
-            if (eventHeaderType == "check_suite")
-            {
-                return false;
-
-                // lol maybe we'll use this someday
-                //JsonElement root = doc.RootElement;
-                //string status = root.GetProperty("status").GetString();
-                //if (status != "completed")
-                //{
-                //    return false;
-                //}
-
-                //// conclusion only valid if status is completed
-                //string conclusion = root.GetProperty("conclusion").GetString();
-                //if(conclusion == "success" || conclusion == "neutral")
-                //{
-                //    return false; 
-                //}
-            }
-
-            // issues, pull_request
 
             return true;
         }

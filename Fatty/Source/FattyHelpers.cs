@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Json;
+using System.Numerics;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
@@ -108,9 +109,15 @@ namespace Fatty
         }
 
         // todo: implement
-        public static int GetMessageOverhead(string source)
+        public static int GetMessageOverhead(string source, string messageType = "PRIVMSG", bool bIsTwitchServer = false)
         {
-            return 20;
+            // twitch servers have a 500 character limitation opposed to the regular 512, so we add 12 to overhead to account for that
+            return source.Length + messageType.Length + (bIsTwitchServer ? 12 : 0);
+        }
+
+        public static bool StringContainsMulti(string input, string[] searchStrings, StringComparison compareType = StringComparison.Ordinal)
+        {
+            return Array.Exists(searchStrings, element => element.Equals(input, compareType));
         }
 
         public static List<Type> GetAllDerivedClasses<TBase>()
