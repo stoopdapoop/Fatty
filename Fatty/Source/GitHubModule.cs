@@ -183,6 +183,8 @@ namespace Fatty
                 //}
             }
 
+            // issues, pull_request
+
             return true;
         }
 
@@ -338,6 +340,17 @@ namespace Fatty
                             string issueTitle = issue.GetProperty("title").GetString();
                             string issueURL = issue.GetProperty("html_url").GetString();
                             formattedMessage = $"{user} {action} issue in {repo}: \"{issueTitle}\" - {issueURL}";
+                        }
+                        break;
+                    case "milestone":
+                        {
+                            var milestone = root.GetProperty("milestone");
+                            string action = root.GetProperty("action").GetString();
+                            string user = root.GetProperty("sender").GetProperty("login").GetString();
+                            string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
+                            string milestoneTitle = milestone.GetProperty("title").GetString();
+                            string url = milestone.GetProperty("html_url").GetString();
+                            formattedMessage = $"{user} {action} milestone \"{milestoneTitle}\" in {repo}: \"{url}\"";
                         }
                         break;
                     case "meta":
