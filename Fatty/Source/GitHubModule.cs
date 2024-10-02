@@ -218,13 +218,16 @@ namespace Fatty
                             string user = root.GetProperty("sender").GetProperty("login").GetString();
                             string action = root.GetProperty("action").GetString();
                             string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
-                            string url = comment.GetProperty("html_url").GetString();
+                            string commitId = comment.GetProperty("commit_id").GetString();
+                            string commentURL = comment.GetProperty("html_url").GetString();
+                            // prune away most of the commit hash
+                            commentURL = commentURL.Replace(commitId, commitId.Substring(0, 8));
                             string body = comment.GetProperty("body").GetString();
                             const int previewLength = 26;
                             string bodySnippet = body.Substring(0, Math.Min(body.Length, previewLength));
                             if (body.Length > previewLength)
                                 bodySnippet += "...";
-                            formattedMessage = $"{commonFields.ActorName} {action} a commit comment in {repo} - {url} //{bodySnippet}";
+                            formattedMessage = $"{commonFields.ActorName} {action} a commit comment in {repo} - {commentURL} //{bodySnippet}";
                         }
                         break;
                     case "check_suite":
@@ -319,11 +322,8 @@ namespace Fatty
                             var comment = root.GetProperty("comment");
                             var issue = root.GetProperty("issue");
                             string action = root.GetProperty("action").GetString();
-                            string commitId = comment.GetProperty("commit_id").GetString();
-                            string commentURL = comment.GetProperty("html_url").GetString();
-                            // prune away most of the commit hash
-                            commentURL = commentURL.Replace(commitId, commitId.Substring(0, 8));
                             string user = root.GetProperty("sender").GetProperty("login").GetString();
+                            string commentURL = comment.GetProperty("html_url").GetString();
                             string issueTitle = issue.GetProperty("title").GetString();
                             string repo = root.GetProperty("repository").GetProperty("full_name").GetString();
                             formattedMessage = $"{user} {action} comment on {repo}:\"{issueTitle}\" - {commentURL}";
