@@ -1,12 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Globalization;
 using System.IO;
 using System.Json;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Reflection;
 using System.Runtime.Serialization.Json;
 using System.Text;
+using System.Threading.Tasks;
+using System.Web;
 
 namespace Fatty
 {
@@ -142,6 +147,42 @@ namespace Fatty
             }
 
             return derivedClasses;
+        }
+
+        public static async Task<HttpResponseMessage> HttpRequest(string BaseAddress, string Endpoint, HttpMethod method, NameValueCollection? URIQueries, HttpRequestHeaders? headers )
+        {
+            UriBuilder uriBuilder = new UriBuilder(BaseAddress)
+            {
+                Path = Endpoint
+            };
+
+            if (URIQueries != null)
+            {
+                NameValueCollection query = HttpUtility.ParseQueryString(uriBuilder.Query);
+                query.Add(URIQueries);
+                uriBuilder.Query = query.ToString();
+            }
+
+            HttpRequestMessage request = new HttpRequestMessage(method, uriBuilder.Uri);
+
+            HttpClient client = new HttpClient()
+            {
+                BaseAddress = new Uri(BaseAddress)
+            };
+            if (headers != null)
+            {
+                foreach (var header in headers)
+                {
+                    client.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, header.Value);
+                }
+            }
+
+            return await client.SendAsync(request);
+        }
+
+        public static HttpRequestHeaders CreateHTTPRequestHeaders()
+        {
+            return new HttpRequestMessage().Headers;
         }
 
     }

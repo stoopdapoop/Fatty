@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Reflection.PortableExecutable;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Text;
@@ -512,17 +513,11 @@ namespace Fatty
             GitHubContext firstContext = ActiveChannelContexts[0];
             if (firstContext != null)
             {
-                HttpClient client = new HttpClient()
-                {
-                    BaseAddress = new Uri("https://api.github.com")
-                };
+                HttpRequestHeaders headers = FattyHelpers.CreateHTTPRequestHeaders();
+                headers.Authorization = new AuthenticationHeaderValue("Bearer", firstContext.AccessToken);
+                headers.UserAgent.Add(new ProductInfoHeaderValue("FattyBot", "0.3"));
 
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", firstContext.AccessToken);
-                client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("FattyBot", "0.3"));
-
-                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "rate_limit");
-
-                var response = client.Send(request);
+                HttpResponseMessage response = FattyHelpers.HttpRequest("https://api.github.com", "rate_limit", HttpMethod.Get, null, headers).Result;        
                 if (response.IsSuccessStatusCode)
                 {
                     List<string> LimitStrings = new List<string>();

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Runtime.Serialization;
@@ -87,6 +88,8 @@ namespace Fatty
         static SteamConfig Config;
         SteamChannelContext ChannelContext;
 
+        Thread PollingThread;
+
         const string APIBaseAddress = "https://api.steampowered.com";
         const string ServerListEndpoint = "IGameServersService/GetServerList/v1/";
         const string FilterParams = @"gamedir\NeotokyoSource\empty\1";
@@ -136,15 +139,18 @@ namespace Fatty
 
         async void OnChannelJoined(string ircChannel)
         {
-            // todo: move this somewhere else
-            CancellationTokenSource tokenSource = new CancellationTokenSource();
-            Random rand = new Random();
-
             if (ChannelContext.ShouldPoll)
             {
+                CancellationTokenSource tokenSource = new CancellationTokenSource();
+                Random rand = new Random();
+
+            
                 // make each instance of the module wait some amount of time so we don't get in trouble for spamming.
-                await Task.Delay(rand.Next(500, 1000));
-                PollNeotokyoServers(ChannelContext, tokenSource.Token);
+                await Task.Delay(rand.Next(1000, 5000));
+                // Spawn listener Thread
+                PollingThread = new Thread( () => PollNeotokyoServers(ChannelContext, tokenSource.Token));
+                PollingThread.Name = $"{OwningChannel.ServerName}:{ircChannel}SteamPollingThread";
+                PollingThread.Start();
             }
 
         }
@@ -153,14 +159,7 @@ namespace Fatty
         {
             try
             {
-                HttpClient client = new HttpClient()
-                {
-                    BaseAddress = new Uri(APIBaseAddress)
-                };
-
-                HttpRequestMessage request = GetNeotokyoServerRequest();
-
-                var result = client.Send(request);
+                HttpResponseMessage result = FattyHelpers.HttpRequest(APIBaseAddress, ServerListEndpoint, HttpMethod.Get, GetNeotokyoQueryParams(), null).Result;
 
                 if (result.IsSuccessStatusCode)
                 {
@@ -224,8 +223,7 @@ namespace Fatty
                 TimeToSleep = PollInterval;
                 try
                 {
-                    HttpRequestMessage request = GetNeotokyoServerRequest();
-                    var result = await client.SendAsync(request);
+                    HttpResponseMessage result = FattyHelpers.HttpRequest(APIBaseAddress, ServerListEndpoint, HttpMethod.Get, GetNeotokyoQueryParams(), null).Result;
                     
                     if (result.IsSuccessStatusCode)
                     {
@@ -233,7 +231,7 @@ namespace Fatty
                         try
                         {
                             // todo: read content properly instead of doing this weird string transcode
-                            SteamServerResult pollResult = FattyHelpers.DeserializeFromJsonString<SteamServerResult>( await result.Content.ReadAsStringAsync());
+                            SteamServerResult pollResult = FattyHelpers.DeserializeFromJsonString<SteamServerResult>( result.Content.ReadAsStringAsync().Result);
                             SteamServerResponse pollResponse = pollResult.Response;
                             if (pollResponse != null)
                             {
@@ -282,20 +280,12 @@ namespace Fatty
             }
         }
 
-        private HttpRequestMessage GetNeotokyoServerRequest()
+        private NameValueCollection GetNeotokyoQueryParams()
         {
-            UriBuilder uriBuilder = new UriBuilder(APIBaseAddress)
-            {
-                Path = ServerListEndpoint
-            };
-            var query = HttpUtility.ParseQueryString(uriBuilder.Query);
+            NameValueCollection query = new NameValueCollection();
             query["key"] = Config.APIKey;
             query["filter"] = FilterParams;
-            uriBuilder.Query = query.ToString();
-
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uriBuilder.Uri);
-
-            return request;
+            return query;
         }
     }
 }
