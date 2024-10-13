@@ -141,7 +141,7 @@ namespace Fatty
 
         public void SendMessage(string sendTo, string message)
         {
-            string outputMessage = String.Format("PRIVMSG {0} :{1}", sendTo, message);
+            string outputMessage = $"PRIVMSG {sendTo} :{message}";
             SendServerMessage(outputMessage);
         }
 

@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Json;
-using System.Numerics;
+using System.Linq;
 using System.Reflection;
-using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Text;
 
@@ -117,6 +117,12 @@ namespace Fatty
         public static bool StringContainsMulti(string input, string[] searchStrings, StringComparison compareType = StringComparison.Ordinal)
         {
             return Array.Exists(searchStrings, element => element.Equals(input, compareType));
+        }
+
+        public static string RemoveDiacritics(string text)
+        {
+            var normalizedString = text.Normalize(NormalizationForm.FormD);
+            return new string(normalizedString.Where(c => CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark).ToArray());
         }
 
         public static List<Type> GetAllDerivedClasses<TBase>()

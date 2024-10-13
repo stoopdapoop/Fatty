@@ -127,35 +127,45 @@ namespace Fatty
 
         public void HandleServerMessage(Dictionary<string, string>? tags, string ircUser, string ircChannel, string message)
         {
-            lock (LoggingLock)
-            {
-                try
-                {
-                    IrcLogUser FoundUser = Logging.Users.Find(ircUser, ServerLogInstance.Id);
-                    if (FoundUser == null)
-                    {
-                        FoundUser = new IrcLogUser(ircUser, ServerLogInstance.Id, DateTime.Now);
-                        Logging.Users.Add(FoundUser);
-                        // saves later
-                    }
-                    else
-                    {
-                        FoundUser.LastSeen = DateTime.Now;
-                    }
 
-                    var MessageLog = new ChannelMessageLog();
-                    MessageLog.Channel = ChannelLogInstances[ircChannel];
-                    MessageLog.User = FoundUser;
-                    MessageLog.Message = message;
-                    //MessageLog.Date = DateTime.Now.ToString("YYYY-MM-DD HH:MM:SS.SSS");
-                    MessageLog.Date = DateTime.Now;
-                    var entityEntry = Logging.Messages.Add(MessageLog);
-                    Logging.SaveChanges();
-                    entityEntry.State = EntityState.Detached;
-                }
-                catch (Exception ex)
+            ChannelContext curContext = Channels.Find(x => x.ChannelName == ircChannel);
+            bool ShouldLog = true;
+            if (curContext != null)
+            {
+                ShouldLog = !curContext.LoggingDisabled;
+            }
+            if (ShouldLog)
+            {
+                lock (LoggingLock)
                 {
-                    Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
+                    try
+                    {
+                        IrcLogUser FoundUser = Logging.Users.Find(ircUser, ServerLogInstance.Id);
+                        if (FoundUser == null)
+                        {
+                            FoundUser = new IrcLogUser(ircUser, ServerLogInstance.Id, DateTime.Now);
+                            Logging.Users.Add(FoundUser);
+                            // saves later
+                        }
+                        else
+                        {
+                            FoundUser.LastSeen = DateTime.Now;
+                        }
+
+                        var MessageLog = new ChannelMessageLog();
+                        MessageLog.Channel = ChannelLogInstances[ircChannel];
+                        MessageLog.User = FoundUser;
+                        MessageLog.Message = message;
+                        //MessageLog.Date = DateTime.Now.ToString("YYYY-MM-DD HH:MM:SS.SSS");
+                        MessageLog.Date = DateTime.Now;
+                        var entityEntry = Logging.Messages.Add(MessageLog);
+                        Logging.SaveChanges();
+                        entityEntry.State = EntityState.Detached;
+                    }
+                    catch (Exception ex)
+                    {
+                        Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
+                    }
                 }
             }
 
@@ -164,11 +174,17 @@ namespace Fatty
                 foreach (ChannelMessageDelegate chanDel in ChannelMessageEvent.GetInvocationList())
                 {
                     Debug.Assert(Object.ReferenceEquals(chanDel.Target.GetType(), typeof(ChannelContext)), "Target of ChannelMessageDelegate not of type ChannelContext");
-
-                    ChannelContext DelegateContext = (ChannelContext)chanDel.Target;
-                    if (DelegateContext.ChannelName == ircChannel)
+                    try
                     {
-                        chanDel(tags, ircUser, ircChannel, message);
+                        ChannelContext DelegateContext = (ChannelContext)chanDel.Target;
+                        if (DelegateContext.ChannelName == ircChannel)
+                        {
+                            chanDel(tags, ircUser, ircChannel, message);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Fatty.PrintWarningToScreen($"Falled to issue Channel Message events for {(curContext != null ? $"{curContext.ChannelName}" : "Error")}", ex.StackTrace);
                     }
                 }
             }

@@ -34,6 +34,9 @@ namespace Fatty
         [DataMember]
         public string CommandPrefix { get; private set; }
 
+        [DataMember]
+        public bool LoggingDisabled { get; set; }
+
         public string ServerName => Server.ServerName;
 
         private ServerContext Server;
