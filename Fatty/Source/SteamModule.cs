@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 
 namespace Fatty
 {
@@ -20,8 +22,8 @@ namespace Fatty
             [DataMember(IsRequired = true)]
             public int PollFrequencyMinutes;
 
-            [DataMember]
-            public List<SteamChannelContext> Contexts;
+            [DataMember(Name = "Contexts")]
+            public List<SteamChannelContext> AllContexts;
         }
 
         [DataContract]
@@ -82,8 +84,9 @@ namespace Fatty
 
 #pragma warning restore 0649
 
-        SteamConfig Config;
-                
+        static SteamConfig Config;
+        SteamChannelContext ChannelContext;
+
         const string APIBaseAddress = "https://api.steampowered.com";
         const string ServerListEndpoint = "IGameServersService/GetServerList/v1/";
         const string FilterParams = @"gamedir\NeotokyoSource\empty\1";
@@ -96,22 +99,22 @@ namespace Fatty
         {
             base.PostConnectionModuleInit();
 
-            // todo: make it so I only care about my own contexts
-            Config = FattyHelpers.DeserializeFromPath<SteamConfig>("Steam.cfg");
-            List<SteamChannelContext> activeContexts = new List<SteamChannelContext>();
+            if (Config == null)
+            {
+                Config = FattyHelpers.DeserializeFromPath<SteamConfig>("Steam.cfg");
+            }
 
-            foreach(var context in Config.Contexts)
+            foreach(var context in Config.AllContexts)
             {
                 if (context.ServerName.Equals(OwningChannel.ServerName, StringComparison.OrdinalIgnoreCase))
                 {
                     if (context.ChannelName.Equals(OwningChannel.ChannelName, StringComparison.OrdinalIgnoreCase))
                     {
-                        activeContexts.Add(context);
+                        ChannelContext = context;
+                        break;
                     }
                 }
             }
-
-            Config.Contexts = activeContexts;
         }
 
         public override void RegisterEvents()
@@ -136,16 +139,14 @@ namespace Fatty
             // todo: move this somewhere else
             CancellationTokenSource tokenSource = new CancellationTokenSource();
             Random rand = new Random();
-            
-            foreach (SteamChannelContext context in Config.Contexts)
+
+            if (ChannelContext.ShouldPoll)
             {
-                if (context.ShouldPoll)
-                {
-                    // make each instance of the module wait some amount of time so we don't get in trouble for spamming.
-                    await Task.Delay(rand.Next(500, 1000));
-                    PollNeotokyoServers(context, tokenSource.Token);
-                }
+                // make each instance of the module wait some amount of time so we don't get in trouble for spamming.
+                await Task.Delay(rand.Next(500, 1000));
+                PollNeotokyoServers(ChannelContext, tokenSource.Token);
             }
+
         }
 
         private void NeotokyoCommand(string ircUser, string ircChannel, string message)
@@ -163,7 +164,7 @@ namespace Fatty
 
                 if (result.IsSuccessStatusCode)
                 {
-                    SteamServerResult pollResult = FattyHelpers.DeserializeFromJsonString<SteamServerResult>(result.Content.ToString());
+                    SteamServerResult pollResult = FattyHelpers.DeserializeFromJsonString<SteamServerResult>(result.Content.ReadAsStringAsync().Result);
                     SteamServerResponse pollResponse = pollResult.Response;
                     bool reported = false;
 
@@ -232,7 +233,7 @@ namespace Fatty
                         try
                         {
                             // todo: read content properly instead of doing this weird string transcode
-                            SteamServerResult pollResult = FattyHelpers.DeserializeFromJsonString<SteamServerResult>(result.Content.ToString());
+                            SteamServerResult pollResult = FattyHelpers.DeserializeFromJsonString<SteamServerResult>( await result.Content.ReadAsStringAsync());
                             SteamServerResponse pollResponse = pollResult.Response;
                             if (pollResponse != null)
                             {
@@ -257,15 +258,20 @@ namespace Fatty
                         {
                             if (PopulatedServers.Count == 1)
                             {
-                                OwningChannel.SendChannelMessage($"Neotokyo server \"{PopulatedServers[0].ServerName}\" has { PopulatedServers[0].PlayerCount } nerds in it");
+                                
+                                OwningChannel.SendChannelMessage($"[{DateTime.Now.ToShortDateString()}] Neotokyo server \"{PopulatedServers[0].ServerName}\" has { PopulatedServers[0].PlayerCount } nerds in it");
                             }
                             else
                             {
-                                OwningChannel.SendChannelMessage($"{PopulatedServers.Count} Neotokyo servers have {context.MinPlayerThreshold} or more nerds in them");
+                                OwningChannel.SendChannelMessage($"[{DateTime.Now.ToShortDateString()}] {PopulatedServers.Count} Neotokyo servers have {context.MinPlayerThreshold} or more nerds in them");
                             }
 
                             TimeToSleep = SleepTime;
                         }
+                    }
+                    else
+                    {
+                        Fatty.PrintWarningToScreen($"Unsuccessful steam polling  {result.ReasonPhrase} in {OwningChannel.ChannelName}");
                     }
                 }
                 catch(Exception ex)
@@ -278,11 +284,16 @@ namespace Fatty
 
         private HttpRequestMessage GetNeotokyoServerRequest()
         {
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, ServerListEndpoint);
-            //request.AddQueryParameter("key", Config.APIKey);
-            request.Properties["key"] = Config.APIKey;
-            //request.AddQueryParameter("filter", FilterParams);
-            request.Properties["filter"] = FilterParams;
+            UriBuilder uriBuilder = new UriBuilder(APIBaseAddress)
+            {
+                Path = ServerListEndpoint
+            };
+            var query = HttpUtility.ParseQueryString(uriBuilder.Query);
+            query["key"] = Config.APIKey;
+            query["filter"] = FilterParams;
+            uriBuilder.Query = query.ToString();
+
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uriBuilder.Uri);
 
             return request;
         }
