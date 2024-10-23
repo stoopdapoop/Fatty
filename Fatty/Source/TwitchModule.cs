@@ -1,10 +1,17 @@
-﻿using System;
+﻿using Microsoft.Extensions.Options;
+using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Runtime.Serialization;
 using System.Text.Json;
+using System.Threading.Tasks;
 using System.Web;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace Fatty
 {
@@ -13,17 +20,20 @@ namespace Fatty
         [DataContract]
         public class TwitchContextListing
         {
-            [DataMember(IsRequired = true, EmitDefaultValue = true)]
+            [DataMember(IsRequired = true)]
             public string ClientID;
 
-            [DataMember(IsRequired = true, EmitDefaultValue = true)]
+            [DataMember(IsRequired = true)]
             public string RedirectURI;
 
             [DataMember(IsRequired = true)]
             public string ClientSecret;
 
             [DataMember(IsRequired = true)]
-            public string BotScope;
+            public string AccessToken;
+
+            [DataMember(IsRequired = true)]
+            public List<string> BotScopes;
 
             [DataMember(IsRequired = true, Name = "TwitchContexts")]
             public List<TwitchContext> AllContexts;
@@ -49,13 +59,18 @@ namespace Fatty
         public class TwitchTokenResponse
         {
             [DataMember(Name = "access_token")]
-            public string AccessToken { get; private set; }
+            public string AccessToken { get; set; }
 
             [DataMember(Name = "refresh_token")]
-            public string RefreshToken { get; private set; }
+            public string RefreshToken { get; set; }
 
             [DataMember(Name = "expires_in")]
-            public int AccessExpiresInSeconds { get; private set; }
+            public int AccessExpiresInSeconds { get; set; }
+        }
+
+        private class TwitchEndpoints
+        {
+            public const string BaseOAuth = "https://id.twitch.tv/oauth2";
         }
 
         private static TwitchTokenResponse TokenResponse;
@@ -65,28 +80,118 @@ namespace Fatty
         private static TwitchContextListing GlobalData;
         TwitchContext ActiveContext;
 
+        const string TokenPath = "TwitchTokens.pls";
+
 
         static Dictionary<string, PluginChannelMessageDelegate> TwitchMessageEvents;
         static Dictionary<string, PluginChannelMessageDelegate> IRCMirrorMessageEvents;
 
-        public static TwitchTokenResponse ValidateAuthTokens()
-        {
-            return null;
-        }
-
         public override void RegisterAvailableCommands(ref List<UserCommand> Commands)
         {
-            Commands.Add(new UserCommand("GenTwitchAuthURL", GenTwitchAuthURL, "Generates a twitch Oath url for fatty, Params are {RedirectURI}"));
+            Commands.Add(new UserCommand("TwitchAuthURL", GenTwitchAuthTokenURL, "Generates a twitch Oath url for fatty"));
+            Commands.Add(new UserCommand("TwitchRefreshToken", RefreshOAuthTokenCommand, "Refreshes OAuth Tokens. Pass in an access token as argument to validate, otherwise last refresh token is used."));
         }
 
         public override void ListCommands(ref List<string> CommandNames)
         {
-            CommandNames.Add("GenTwitchAuthURL");
+            CommandNames.Add("TwitchAuthURL");
+        }
+
+        public static string GetAuthScopesString()
+        {
+            return string.Join(" " ,GlobalData.BotScopes);
         }
 
         private string GetMirrorKey(string server, string channel)
         {
             return $"{server}/{channel}";
+        }
+
+        private void RefreshOAuthToken(TwitchContextListing globals, string? newAccessToken  = null)
+        {
+
+            TwitchTokenResponse oldValues = FattyHelpers.DeserializeFromPath<TwitchTokenResponse>(TokenPath);
+
+            string refreshToken = oldValues.RefreshToken;
+
+            var formData = new Dictionary<string, string>();
+
+            if (newAccessToken == null)
+            {
+                formData.Add("client_id", globals.ClientID);
+                formData.Add("client_secret", globals.ClientSecret);
+                formData.Add("grant_type", "refresh_token");
+                formData.Add("refresh_token", refreshToken);
+            }
+            else
+            {
+                formData.Add("client_id", globals.ClientID);
+                formData.Add("client_secret", globals.ClientSecret);
+                formData.Add("code", newAccessToken);
+                formData.Add("grant_type", "authorization_code");
+                formData.Add("redirect_uri", globals.RedirectURI);
+            }
+
+            try
+            {
+                HttpResponseMessage result = FattyHelpers.HttpRequest("https://id.twitch.tv", "oauth2/token", HttpMethod.Post, null, null, formData).Result;
+
+                if (result.IsSuccessStatusCode)
+                {
+                    string returnResult = result.Content.ReadAsStringAsync().Result;
+                    oldValues = FattyHelpers.DeserializeFromJsonString<TwitchTokenResponse>(returnResult);
+                    FattyHelpers.JsonSerializeToPath(oldValues, TokenPath);
+                    GlobalData.AccessToken = oldValues.AccessToken;
+                    DateTime Expiration = DateTime.Now + TimeSpan.FromSeconds(oldValues.AccessExpiresInSeconds);
+                    OwningChannel.SendChannelMessage($"Sucessfully refreshed auth token. It will expire at {Expiration.ToString()}. {(newAccessToken != null ? "Don't forget to update twitch config." : "")}");
+                }
+                else
+                {
+                    Fatty.PrintWarningToScreen($"Failed to refresh twitch auth token: {result.ReasonPhrase}");
+                    OwningChannel.SendChannelMessage($"Failed to refresh twitch auth token: {result.ReasonPhrase}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Fatty.PrintWarningToScreen(ex);
+            }
+        }
+
+        private async void ValidateOAuthToken()
+        {
+            while (true)
+            {
+                try
+                {
+                    var headers = FattyHelpers.CreateHTTPRequestHeaders();
+                    headers.Add("Authorization", $"OAuth {GlobalData.AccessToken}");
+
+                    HttpResponseMessage result = await FattyHelpers.HttpRequest("https://id.twitch.tv", "oauth2/validate", HttpMethod.Get, null, headers);
+
+                    if (!result.IsSuccessStatusCode)
+                    {
+                        Fatty.PrintWarningToScreen(result.Content.ReadAsStringAsync().Result);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Fatty.PrintWarningToScreen(ex);
+                }
+
+                await Task.Delay(TimeSpan.FromHours(1));
+            }
+        }
+
+        private void RefreshOAuthTokenCommand(string ircUser, string ircChannel, string message)
+        {
+            string[] segments = message.Split(" ");
+            string newAccessToken = null;
+            if (segments.Length == 2)
+            {
+                newAccessToken = segments[1];
+            }
+
+            RefreshOAuthToken(GlobalData, newAccessToken);
         }
 
         public override void ChannelInit(ChannelContext channel)
@@ -100,6 +205,8 @@ namespace Fatty
                 IRCMirrorMessageEvents = new Dictionary<string, PluginChannelMessageDelegate>();
 
                 GlobalData = FattyHelpers.DeserializeFromPath<TwitchContextListing>("Twitch.cfg");
+
+                ValidateOAuthToken();
             }
 
             foreach (var context in GlobalData.AllContexts)
@@ -238,11 +345,21 @@ namespace Fatty
             OwningChannel.SendChannelMessage($"{(colorIndex != -1 ? $"\x3{colorIndex}" : "")}<{ircUser}>\x0F{message}");
         }
 
-        private void GenTwitchAuthURL(string ircUser, string ircChannel, string message)
+        private void GenTwitchAuthTokenURL(string ircUser, string ircChannel, string message)
         {
-            //string endpoint = "https://id.twitch.tv/oauth2/token";
-            //string encoded = HttpUtility.UrlEncode("scope=chat:read+chat:edit+whispers:read+whispers:edit+channel:moderate");
-            //Fatty.PrintToScreen(encoded, ConsoleColor.Magenta);
+            UriBuilder uriBuilder = new UriBuilder("https://id.twitch.tv")
+            {
+                Path = "oauth2/authorize"
+            };
+            NameValueCollection queryData = HttpUtility.ParseQueryString(uriBuilder.Query);
+            queryData["client_id"] = GlobalData.ClientID;
+            queryData["redirect_uri"] = GlobalData.RedirectURI;
+            queryData["response_type"] = "code";
+            queryData["scope"] = GetAuthScopesString();
+            queryData["state"] = Guid.NewGuid().ToString("N");
+            uriBuilder.Query = queryData.ToString();
+
+            OwningChannel.SendChannelMessage(uriBuilder.Uri.ToString());
         }
     }
 }

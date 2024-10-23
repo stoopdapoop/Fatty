@@ -100,6 +100,22 @@ namespace Fatty
             }
         }
 
+        public static bool JsonSerializeToPath<T>(T TargetObject, string Path, DataContractJsonSerializerSettings SerializerSettings = null)
+        {
+            try
+            {
+                string content = JsonSerializeFromObject<T>(TargetObject, SerializerSettings);
+                File.WriteAllText(Path, content);
+            }
+            catch (Exception e)
+            {
+                Fatty.PrintWarningToScreen($"Failed to serialize object of type :{typeof(T).FullName} - Exception: {e.Message}", e.StackTrace);
+                return false;
+            }
+
+            return true;
+        }
+
         public static string RemoveCommandName(string message)
         {
             int firstSpace = message.IndexOf(" ");
@@ -148,8 +164,8 @@ namespace Fatty
 
             return derivedClasses;
         }
-
-        public static async Task<HttpResponseMessage> HttpRequest(string BaseAddress, string Endpoint, HttpMethod method, NameValueCollection? URIQueries, HttpRequestHeaders? headers )
+        // Body can be string, Dictionary, or FormUrlEncodedContent
+        public static async Task<HttpResponseMessage> HttpRequest(string BaseAddress, string Endpoint, HttpMethod method, NameValueCollection? URIQueries = null, HttpRequestHeaders? headers = null, object? Body = null)
         {
             UriBuilder uriBuilder = new UriBuilder(BaseAddress)
             {
@@ -176,6 +192,20 @@ namespace Fatty
                     client.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, header.Value);
                 }
             }
+
+            HttpContent content = null;
+
+            if (Body is Dictionary<string, string> bodyDict)
+            {
+                content = new FormUrlEncodedContent(bodyDict);
+                content.Headers.ContentType = new MediaTypeHeaderValue("application/x-www-form-urlencoded");
+            }
+            else if (Body is string bodyString)
+            {
+                content = new StringContent(bodyString);
+            }
+
+            request.Content = content;
 
             return await client.SendAsync(request);
         }
