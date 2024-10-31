@@ -15,6 +15,12 @@ namespace Fatty
         WHISPER
     }
 
+    public enum UserStateType
+    {
+        Global,
+        User,
+        Room
+    }
     public delegate void CommandDelegate(string ircUser, string ircChannel, string message);
     public delegate void PluginChannelMessageDelegate(Dictionary<string, string>? tags, string ircUser, string message);
     public delegate void UserJoinPartDelegate(string ircUser, string ircChannel, JoinType type);
@@ -34,4 +40,5 @@ namespace Fatty
     public delegate void QuitMessageDelegate(string userQuit, string quitMessage);
     public delegate void NoticeWhisperDelegate(NoticeType type, string ircUser, string message);
     public delegate void ServerWelcome(int messageID);
+    public delegate void UserstateDelegate(UserStateType type, Dictionary<string, string>? tags, string channel, string username);
 }

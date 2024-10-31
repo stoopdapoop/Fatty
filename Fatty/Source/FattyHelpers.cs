@@ -204,6 +204,10 @@ namespace Fatty
             {
                 content = new StringContent(bodyString);
             }
+            else if (Body is HttpContent bodyContent)
+            {
+                content = bodyContent;
+            }
 
             request.Content = content;
 

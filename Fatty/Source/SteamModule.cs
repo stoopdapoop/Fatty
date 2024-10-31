@@ -2,11 +2,9 @@
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web;
 
 namespace Fatty
 {

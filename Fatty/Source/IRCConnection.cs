@@ -404,6 +404,15 @@ namespace Fatty
                 case "INVITE":
                     HandleInvite(responseMessage);
                     break;
+                case "GLOBALUSERSTATE":
+                    HandleUserState(responseMessage, UserStateType.Global);
+                    break;
+                case "USERSTATE":
+                    HandleUserState(responseMessage, UserStateType.User);
+                    break;
+                case "ROOMSTATE":
+                    HandleUserState(responseMessage, UserStateType.Room);
+                    break;
                 //// RPL_NAMREPLY
                 //case "353":
                 //    {
@@ -604,6 +613,33 @@ namespace Fatty
                 {
 
                 }
+            }
+        }
+
+        private void HandleUserState(ServerMessage responseMessage, UserStateType type)
+        {
+            try
+            {
+                string channelName = responseMessage.Params;
+                string displayName;
+                if (type == UserStateType.User)
+                {
+                    displayName = responseMessage.Tags["display-name"];
+                }
+                else if (type == UserStateType.Room)
+                {
+                    displayName = responseMessage.Params;
+                }
+                else
+                {
+                    displayName = responseMessage.Params;
+                }
+            
+                Context.HandleUserstate(type, responseMessage.Tags, channelName, displayName);
+            }
+            catch (Exception e)
+            {
+                Fatty.PrintWarningToScreen(e);
             }
         }
 
