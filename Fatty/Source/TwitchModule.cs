@@ -208,12 +208,12 @@ namespace Fatty
                     FattyHelpers.JsonSerializeToPath(Tokens, TokenPath);
                     //GlobalData.AccessToken = oldValues.AccessToken;
                     DateTime Expiration = DateTime.Now + TimeSpan.FromSeconds(Tokens.AccessExpiresInSeconds);
-                    OwningChannel.SendChannelMessage($"Sucessfully refreshed auth token. It will expire at {Expiration.ToString()}. {(newAccessToken != null ? "Don't forget to update twitch config." : "")}");
+                    //OwningChannel.SendChannelMessage($"Sucessfully refreshed auth token. It will expire at {Expiration.ToString()}. {(newAccessToken != null ? "Don't forget to update twitch config." : "")}");
                 }
                 else
                 {
                     Fatty.PrintWarningToScreen($"Failed to refresh twitch auth token: {result.ReasonPhrase}");
-                    OwningChannel.SendChannelMessage($"Failed to refresh twitch auth token: {result.ReasonPhrase}");
+                    //OwningChannel.SendChannelMessage($"Failed to refresh twitch auth token: {result.ReasonPhrase}");
                 }
             }
             catch (Exception ex)
@@ -236,8 +236,9 @@ namespace Fatty
                     if (!result.IsSuccessStatusCode)
                     {
                         Fatty.PrintWarningToScreen(result.Content.ReadAsStringAsync().Result);
-                        RefreshOAuthToken(GlobalData);
                     }
+
+                    RefreshOAuthToken(GlobalData);
                 }
                 catch (Exception ex)
                 {
