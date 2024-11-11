@@ -172,10 +172,8 @@ namespace Fatty
             return $"{server}/{channel}";
         }
 
-        private void RefreshOAuthToken(TwitchContextListing globals, string? newAccessToken  = null)
+        private void RefreshOAuthToken(TwitchContextListing globals, bool triggeredManually, string? newAccessToken  = null)
         {
-
-            //TwitchTokenResponse oldValues = FattyHelpers.DeserializeFromPath<TwitchTokenResponse>(TokenPath);
 
             string refreshToken = Tokens.RefreshToken;
 
@@ -206,14 +204,19 @@ namespace Fatty
                     string returnResult = result.Content.ReadAsStringAsync().Result;
                     Tokens = FattyHelpers.DeserializeFromJsonString<TwitchTokenResponse>(returnResult);
                     FattyHelpers.JsonSerializeToPath(Tokens, TokenPath);
-                    //GlobalData.AccessToken = oldValues.AccessToken;
                     DateTime Expiration = DateTime.Now + TimeSpan.FromSeconds(Tokens.AccessExpiresInSeconds);
-                    //OwningChannel.SendChannelMessage($"Sucessfully refreshed auth token. It will expire at {Expiration.ToString()}. {(newAccessToken != null ? "Don't forget to update twitch config." : "")}");
+                    if (triggeredManually)
+                    {
+                        OwningChannel.SendChannelMessage($"Sucessfully refreshed auth token. It will expire at {Expiration.ToString()}. {(newAccessToken != null ? "Don't forget to update twitch config." : "")}");
+                    }
                 }
                 else
                 {
                     Fatty.PrintWarningToScreen($"Failed to refresh twitch auth token: {result.ReasonPhrase}");
-                    //OwningChannel.SendChannelMessage($"Failed to refresh twitch auth token: {result.ReasonPhrase}");
+                    if (triggeredManually)
+                    {
+                        OwningChannel.SendChannelMessage($"Failed to refresh twitch auth token: {result.ReasonPhrase}");
+                    }
                 }
             }
             catch (Exception ex)
@@ -238,7 +241,7 @@ namespace Fatty
                         Fatty.PrintWarningToScreen(result.Content.ReadAsStringAsync().Result);
                     }
 
-                    RefreshOAuthToken(GlobalData);
+                    RefreshOAuthToken(GlobalData, false);
                 }
                 catch (Exception ex)
                 {
@@ -258,7 +261,7 @@ namespace Fatty
                 newAccessToken = segments[1];
             }
 
-            RefreshOAuthToken(GlobalData, newAccessToken);
+            RefreshOAuthToken(GlobalData, true, newAccessToken);
         }
 
         public override void ChannelInit(ChannelContext channel)
@@ -480,7 +483,7 @@ namespace Fatty
             }
             else
             {
-                RefreshOAuthToken(GlobalData);
+                RefreshOAuthToken(GlobalData, false);
                 await Task.Delay(1000);
                 HttpResponseMessage retryResult = await FattyHelpers.HttpRequest(TwitchEndpoints.BaseAPI, "helix/users", HttpMethod.Get, nameValueCollection, headers);
                 if (retryResult.IsSuccessStatusCode)
