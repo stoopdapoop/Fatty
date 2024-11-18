@@ -493,7 +493,7 @@ namespace Fatty
                 string userSender = serverMessage.Prefix.Substring(0, maskDelimit);
                 try
                 {
-                    if (IsAuthenticatedUser(serverMessage.Prefix))
+                    if (Context.IsAuthenticatedUser(serverMessage.Prefix))
                     {
                         // first word is command, the rest is argument.
                         int DelimPos = serverMessage.Params.IndexOf(':');
@@ -549,7 +549,7 @@ namespace Fatty
 
         private void HandleInvite(ServerMessage message)
         {
-            if (IsAuthenticatedUser(message.Prefix))
+            if (Context.IsAuthenticatedUser(message.Prefix))
             {
                 string channelName = message.Params.Substring(message.Params.IndexOf(':') + 1);
                 JoinChannel(channelName);
@@ -654,19 +654,6 @@ namespace Fatty
         {
             this.IRCWelcomeProgress = new WelcomeProgress();
             IRCWelcomeProgress.WelcomeCompleteEvent += OnWelcomeComplete;
-        }
-
-        private bool IsAuthenticatedUser(string UserToken)
-        {
-            foreach (string authMask in Context.AuthenticatedMasks)
-            {
-                if (UserToken.Substring(UserToken.IndexOf("@") + 1) == authMask)
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
 
         private void ListenForDisconnect()

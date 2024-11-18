@@ -265,6 +265,18 @@ namespace Fatty
             OwnerConnection.SendCapRequest(cap);
         }
 
+        public bool IsAuthenticatedUser(string UserToken)
+        {
+            foreach (string authMask in AuthenticatedMasks)
+            {
+                if (UserToken.Substring(UserToken.IndexOf("@") + 1) == authMask)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
         private void InitLogging()
         {
             lock (LoggingLock)
