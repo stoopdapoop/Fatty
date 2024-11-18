@@ -605,9 +605,9 @@ namespace Fatty
 
                             if (request.HttpMethod == "POST")
                             {
-                                HandlePost(request);
+                                int status = HandlePost(request);
 
-                                context.Response.StatusCode = 200;
+                                context.Response.StatusCode = status;
                                 context.Response.Close();
                             }
                             else
@@ -628,7 +628,8 @@ namespace Fatty
                 }
             }
 
-            public static bool HandlePost(HttpListenerRequest request)
+            // returns http status code
+            public static int HandlePost(HttpListenerRequest request)
             {
                 try
                 {
@@ -639,36 +640,44 @@ namespace Fatty
                     {
                         string payload = reader.ReadToEnd();
                         Console.WriteLine($"Received github event: {eventHeaderType}");
- 
-                        using (JsonDocument doc = JsonDocument.Parse(payload))
+
+                        try
                         {
-                            string eventMessage = GitHubModule.FormatEventString(doc, eventHeaderType);
-
-                            if (eventMessage.Length > 0)
+                            using (JsonDocument doc = JsonDocument.Parse(payload))
                             {
-                                Fatty.PrintToScreen(eventMessage, ConsoleColor.White);
+                                string eventMessage = GitHubModule.FormatEventString(doc, eventHeaderType);
 
-                                lock (RegistrationMutex)
+                                if (eventMessage.Length > 0)
                                 {
-                                    foreach (GitHubModule mod in ListenerModules)
+                                    Fatty.PrintToScreen(eventMessage, ConsoleColor.White);
+
+                                    lock (RegistrationMutex)
                                     {
-                                        if (mod.ShouldReportEvent(doc, eventHeaderType, eventMessage))
+                                        foreach (GitHubModule mod in ListenerModules)
                                         {
-                                            mod.ReportEvent(doc, eventMessage);
+                                            if (mod.ShouldReportEvent(doc, eventHeaderType, eventMessage))
+                                            {
+                                                mod.ReportEvent(doc, eventMessage);
+                                            }
                                         }
                                     }
                                 }
                             }
+                        }
+                        catch (Exception ex)
+                        {
+                            Fatty.PrintWarningToScreen($"Failed To parse Json : {payload} ---- {ex.Message}");
+                            return 418;
                         }
                     }
                 }
                 catch (Exception ex)
                 {
                     Fatty.PrintWarningToScreen(ex);
-                    return false;
+                    return 500;
                 }
 
-                return true;
+                return 200;
             }
 
             public static bool RemoveListener(GitHubModule module)
