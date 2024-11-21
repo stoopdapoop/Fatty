@@ -41,4 +41,5 @@ namespace Fatty
     public delegate void NoticeWhisperDelegate(NoticeType type, string ircUser, string message);
     public delegate void ServerWelcome(int messageID);
     public delegate void UserstateDelegate(UserStateType type, Dictionary<string, string>? tags, string channel, string username);
+    public delegate void UserNoticeDelegate(Dictionary<string, string>? tags, string channel, string username);
 }

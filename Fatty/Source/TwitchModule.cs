@@ -81,14 +81,14 @@ namespace Fatty
         [DataContract]
         public class TwitchTokenResponseStore
         {
-            [DataMember(IsRequired = false)]
-            public TwitchTokenResponse[] Tokens;
+            [DataMember(IsRequired = false, Name = "Tokens")]
+            public TwitchTokenResponse[] TokenResponses;
             
             public int GetIndexByTwitchUser(string username)
             {
-                for(int i = 0; i < Tokens.Length; ++i)
+                for(int i = 0; i < TokenResponses.Length; ++i)
                 {
-                    if (Tokens[i].TwitchUsername != null && Tokens[i].TwitchUsername.Equals(username, StringComparison.OrdinalIgnoreCase))
+                    if (TokenResponses[i].TwitchUsername != null && TokenResponses[i].TwitchUsername.Equals(username, StringComparison.OrdinalIgnoreCase))
                     {
                         return i;
                     }
@@ -98,9 +98,9 @@ namespace Fatty
 
             public int GetIndexByIRCUser(string username)
             {
-                for (int i = 0; i < Tokens.Length; ++i)
+                for (int i = 0; i < TokenResponses.Length; ++i)
                 {
-                    if (Tokens[i].IRCUsername != null && Tokens[i].IRCUsername.Equals(username, StringComparison.OrdinalIgnoreCase))
+                    if (TokenResponses[i].IRCUsername != null && TokenResponses[i].IRCUsername.Equals(username, StringComparison.OrdinalIgnoreCase))
                     {
                         return i;
                     }
@@ -112,9 +112,9 @@ namespace Fatty
             {
                 int emptyNameCount = 0;
                 int returnVal = -1;
-                for (int i = 0; i < Tokens.Length; ++i)
+                for (int i = 0; i < TokenResponses.Length; ++i)
                 {
-                    if (Tokens[i].IRCUsername == null)
+                    if (TokenResponses[i].IRCUsername == null)
                     {
                         ++emptyNameCount;
                         returnVal = i;
@@ -220,6 +220,9 @@ namespace Fatty
         string RoomID = "";
         static string ModID = "";
 
+        bool MirrorWriteToTwitchEnabled = true;
+        bool MirrorReadFromTwitchEnabled = true;
+
         private delegate void MirrorMessageDelegate(string message);
 
 
@@ -233,11 +236,13 @@ namespace Fatty
         // this is instantiated as case insensitive
         Dictionary<string, string> UserIDCache;
 
+        const string MirrorCommandHelp = "Enable or disable read and write mirrors. Both are set if neither read or write is passed. Params are [(read|write)] (on|off|enable|disable)";
         public override void RegisterAvailableCommands(ref List<UserCommand> Commands)
         {
             Commands.Add(new UserCommand("TwitchFattyAuthURL", GenTwitchAuthTokenURL, "Generates a twitch Oath url for fatty"));
             Commands.Add(new UserCommand("TwitchUserAuthURL", GenTwitchUserAuthTokenURL, "Generates a twitch Oath url a user"));
             Commands.Add(new UserCommand("TwitchRefreshToken", RefreshOAuthTokenCommand, "Refreshes OAuth Tokens. Pass in an access token as argument to validate, otherwise last refresh token is used."));
+            Commands.Add(new UserCommand("TwitchMirror", MirrorCommand, MirrorCommandHelp));
         }
 
         public override void ListCommands(ref List<string> CommandNames)
@@ -245,6 +250,7 @@ namespace Fatty
             CommandNames.Add("TwitchFattyAuthURL");
             CommandNames.Add("TwitchUserAuthURL"); 
             CommandNames.Add("TwitchRefreshToken");
+            CommandNames.Add("TwitchMirror");
         }
 
         public static string GetAuthScopesString()
@@ -273,7 +279,7 @@ namespace Fatty
 
             if (newAccessToken == null)
             {
-                string refreshToken = Tokens.Tokens[tokenIndex].RefreshToken;
+                string refreshToken = Tokens.TokenResponses[tokenIndex].RefreshToken;
                 formData.Add("client_id", globals.ClientID);
                 formData.Add("client_secret", globals.ClientSecret);
                 formData.Add("grant_type", "refresh_token");
@@ -296,11 +302,11 @@ namespace Fatty
                 {
                     string returnResult = result.Content.ReadAsStringAsync().Result;
                     TwitchTokenResponse newResponse = FattyHelpers.DeserializeFromJsonString<TwitchTokenResponse>(returnResult);
-                    newResponse.IRCUsername = Tokens.Tokens[tokenIndex].IRCUsername;
-                    newResponse.TwitchUsername = Tokens.Tokens[tokenIndex].TwitchUsername;
-                    Tokens.Tokens[tokenIndex] = newResponse;
+                    newResponse.IRCUsername = Tokens.TokenResponses[tokenIndex].IRCUsername;
+                    newResponse.TwitchUsername = Tokens.TokenResponses[tokenIndex].TwitchUsername;
+                    Tokens.TokenResponses[tokenIndex] = newResponse;
                     FattyHelpers.JsonSerializeToPath(Tokens, TokenPath);
-                    DateTime Expiration = DateTime.Now + TimeSpan.FromSeconds(Tokens.Tokens[tokenIndex].AccessExpiresInSeconds);
+                    DateTime Expiration = DateTime.Now + TimeSpan.FromSeconds(Tokens.TokenResponses[tokenIndex].AccessExpiresInSeconds);
                     if (triggeredManually)
                     {
                         OwningChannel.SendChannelMessage($"Sucessfully refreshed auth token. It will expire at {Expiration.ToString()}. {(newAccessToken != null && newResponse.IRCUsername == null ? "Don't forget to update twitch config." : "")}");
@@ -329,9 +335,9 @@ namespace Fatty
                 {
                     try
                     {
-                        for (int i = 0; i < Tokens.Tokens.Length; ++i)
+                        for (int i = 0; i < Tokens.TokenResponses.Length; ++i)
                         {
-                            TwitchTokenResponse currentToken = Tokens.Tokens[i];
+                            TwitchTokenResponse currentToken = Tokens.TokenResponses[i];
                             var headers = FattyHelpers.CreateHTTPRequestHeaders();
                             headers.Add("Authorization", $"OAuth {currentToken.AccessToken}");
 
@@ -384,6 +390,58 @@ namespace Fatty
             }
 
             RefreshOAuthToken(GlobalData, userIndex, true, newAccessToken);
+        }
+
+        private void MirrorCommand(string ircUser, string ircChannel, string message)
+        {
+            string[] parts = message.Split(' ');
+
+            if (parts.Length > 1)
+            {
+                if (parts[1].Equals("help", StringComparison.OrdinalIgnoreCase))
+                {
+                    OwningChannel.SendChannelMessage(MirrorCommandHelp);
+                    return;
+                }
+
+                int partLen = parts.Length;
+                string[] enableStrings = { "on", "enable", "1"};
+                string[] disableStrings = { "off", "disable", "0" };
+                bool enabled = enableStrings.Contains(parts[partLen-1], StringComparer.OrdinalIgnoreCase);
+                bool disabled = disableStrings.Contains(parts[partLen-1], StringComparer.OrdinalIgnoreCase);
+
+                if (!(enabled || disabled))
+                {
+                    OwningChannel.SendChannelMessage("not enabled or disabled");
+                    return;
+                }
+
+                if (partLen == 3)
+                {
+                    if (parts[1].Equals("read", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // if we get this far then it's disabled if it's not enabled.
+                        MirrorReadFromTwitchEnabled = enabled;
+                        OwningChannel.SendChannelMessage($"read {(enabled ? "enabled" : "disabled")}");
+                        return;
+                    }
+                    else if (parts[1].Equals("write", StringComparison.OrdinalIgnoreCase))
+                    {
+                        MirrorWriteToTwitchEnabled = enabled;
+                        OwningChannel.SendChannelMessage($"write {(enabled ? "enabled" : "disabled")}");
+                        return;
+                    }
+                }
+                else
+                {
+                    MirrorReadFromTwitchEnabled = enabled;
+                    MirrorWriteToTwitchEnabled = enabled;
+                    OwningChannel.SendChannelMessage($"read and write {(enabled ? "enabled" : "disabled")}");
+                    return;
+                }
+            }
+
+            OwningChannel.SendChannelMessage("I don't get it");
         }
 
         public override void ChannelInit(ChannelContext channel)
@@ -453,6 +511,7 @@ namespace Fatty
             OwningChannel.ChannelJoinedEvent += OnChannelJoined;
             OwningChannel.ChannelMessageEvent += OnChannelMessage;
             OwningChannel.UserstateEvent += OnUserstate;
+            OwningChannel.UserNoticeEvent += OnUserNotice;
 
             if (IsMirrorConfigured())
             {
@@ -494,13 +553,24 @@ namespace Fatty
                 {
                     SendMirrorChannelMessage($"FOUND IMPORTANT USER: {userType} - {username}");
                 }
-
-                //UserIDCache[username] = tags[]
             }
             else if (type == UserStateType.Room)
             {
                 RoomID = tags["room-id"];
             }
+        }
+
+        private void OnUserNotice(Dictionary<string, string>? tags, string channel, string username)
+        {
+            if (tags != null)
+            {
+                string systemMessage;
+                if(tags.TryGetValue("system-msg", out systemMessage))
+                {
+                    systemMessage = systemMessage.Replace(@"\s", " ");
+                    SendMirrorChannelMessage(systemMessage);
+                }
+            }   
         }
 
         private void OnChannelMessage(Dictionary<string, string>? tags, string ircUser, string message)
@@ -522,7 +592,10 @@ namespace Fatty
             {
                 if (IsMirrorConfigured())
                 {
-                    IRCMirrorMessageEvents[GetMirrorKey("twitch", ActiveContext.TwitchChatChannel)].Invoke(tags, ircUser, message);
+                    if (MirrorWriteToTwitchEnabled)
+                    {
+                        IRCMirrorMessageEvents[GetMirrorKey("twitch", ActiveContext.TwitchChatChannel)].Invoke(tags, ircUser, message);
+                    }
                 }
             }
         }
@@ -587,9 +660,6 @@ namespace Fatty
         // used to mirror irc messages on twitch
         private void OnMirrorChannelIRCMessage(Dictionary<string, string>? tags, string ircUser, string message)
         {
-            // too spicy
-            //OwningChannel.SendChannelMessage(message);
-
             // if we're actually trying to mirror. maybe check if host is streaming.
             if (!message.StartsWith(OwningChannel.CommandPrefix))
             {
@@ -604,8 +674,8 @@ namespace Fatty
                 int tokenIndex = Tokens.GetIndexByIRCUser(ircUser);
                 if (tokenIndex != -1)
                 {
-                    string userAccessToken = Tokens.Tokens[tokenIndex].AccessToken;
-                    string twitchUserName = Tokens.Tokens[tokenIndex].TwitchUsername;
+                    string userAccessToken = Tokens.TokenResponses[tokenIndex].AccessToken;
+                    string twitchUserName = Tokens.TokenResponses[tokenIndex].TwitchUsername;
                     string twitchUserID;
                     if (!UserIDCache.TryGetValue(twitchUserName, out twitchUserID))
                     {
@@ -625,22 +695,24 @@ namespace Fatty
         // used to mirror twitch messages onto irc
         private void OnMirrorTwitchMessage(Dictionary<string, string>? tags, string ircUser, string message)
         {
-            string colorString = string.Empty;
-            int colorIndex = 99; 
-            if (tags != null)
+            if (MirrorReadFromTwitchEnabled)
             {
-                tags.TryGetValue("color", out colorString);
-                colorIndex = Colors.GetNearestIrcColor(colorString);
-                
-                // assign random color based on name if none provided
-                if(colorIndex == -1)
+                string colorString = string.Empty;
+                int colorIndex = 99;
+                if (tags != null)
                 {
-                    colorIndex = ircUser.GetHashCode() % 99;
-                }
-            }
-            
+                    tags.TryGetValue("color", out colorString);
+                    colorIndex = Colors.GetNearestIrcColor(colorString);
 
-            OwningChannel.SendChannelMessage($"{(colorIndex != -1 ? $"\x3{colorIndex}" : "")}<{ircUser}>\x0F {message}");
+                    // assign random color based on name if none provided
+                    if (colorIndex == -1)
+                    {
+                        colorIndex = ircUser.GetHashCode() % 99;
+                    }
+                }
+
+                OwningChannel.SendChannelMessage($"{(colorIndex != -1 ? $"\x3{colorIndex}" : "")}<{ircUser}>\x0F {message}");
+            }
         }
 
 
@@ -774,7 +846,7 @@ namespace Fatty
         private HttpRequestHeaders GetCommonTwitchRequestHeaders()
         {
             HttpRequestHeaders headers = FattyHelpers.CreateHTTPRequestHeaders();
-            headers.Authorization = new AuthenticationHeaderValue("Bearer", Tokens.Tokens[Tokens.GetFattyTokenIndex()].AccessToken);
+            headers.Authorization = new AuthenticationHeaderValue("Bearer", Tokens.TokenResponses[Tokens.GetFattyTokenIndex()].AccessToken);
             headers.Add("Client-Id", GlobalData.ClientID);
             return headers;
         }
@@ -802,6 +874,7 @@ namespace Fatty
 
             StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
 
+            // we store this before we send in to prevent a race condition
             MostRecentlySentMessage = message;
 
             var result = await FattyHelpers.HttpRequest(TwitchEndpoints.BaseAPI, "helix/chat/messages", HttpMethod.Post, null, headers, content);

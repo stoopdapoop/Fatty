@@ -13,6 +13,7 @@ namespace Fatty
         public event PluginChannelJoinedDelegate ChannelJoinedEvent;
         public event UserJoinPartDelegate UserJoinedEvent;
         public event UserstateDelegate UserstateEvent;
+        public event UserNoticeDelegate UserNoticeEvent;
 
         [DataMember(IsRequired = true)]
         public string ChannelName { get; set; }
@@ -85,6 +86,7 @@ namespace Fatty
             Server.ChannelJoinedEvent += HandleChannelJoined;
             Server.UserJoinedEvent += HandleUserJoined;
             Server.UserstateEvent += HandleUserstate;
+            Server.UserNoticeEvent += HandleUserNotice;
 
             RegisterGlobalCommands();
 
@@ -240,6 +242,17 @@ namespace Fatty
                 foreach(UserstateDelegate usDel  in UserstateEvent.GetInvocationList())
                 {
                     usDel(type, tags, channel, username);
+                }
+            }
+        }
+
+        private void HandleUserNotice(Dictionary<string, string>? tags, string channel, string username)
+        {
+            if(UserNoticeEvent != null)
+            {
+                foreach(UserNoticeDelegate unDel in UserNoticeEvent.GetInvocationList())
+                {
+                    unDel(tags, channel, username);
                 }
             }
         }

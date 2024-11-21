@@ -57,6 +57,8 @@ namespace Fatty
 
         public event UserstateDelegate UserstateEvent;
 
+        public event UserNoticeDelegate UserNoticeEvent;
+
         private IRCConnection OwnerConnection { get; set; }
 
         // todo: clean up contexts when parting or getting kicked
@@ -235,6 +237,21 @@ namespace Fatty
                     if(delegateContext.ChannelName == channel)
                     {
                         userstateDelegate(type, tags, channel, userName);
+                    }
+                }
+            }
+        }
+
+        public void HandleUserNotice(Dictionary<string, string>? tags, string channel, string userName)
+        {
+            if (UserNoticeEvent != null)
+            {
+                foreach (UserNoticeDelegate userNoticeDelegate in UserNoticeEvent.GetInvocationList())
+                {
+                    ChannelContext delegateContext = (ChannelContext)userNoticeDelegate.Target;
+                    if (delegateContext.ChannelName == channel)
+                    {
+                        userNoticeDelegate(tags, channel, userName);
                     }
                 }
             }

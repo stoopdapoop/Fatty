@@ -27,6 +27,8 @@ namespace Fatty
 
         private bool ListenerIsListening = false;
 
+        private bool Quitting = false;
+
         private bool WaitingOnNames = false;
         private Object NamesLock = new object();
         private List<NamePromise> NamePromises = new List<NamePromise>();
@@ -211,8 +213,11 @@ namespace Fatty
 
         public void DisconnectOnExit()
         {
-            Fatty.PrintToScreen("Disconnecting Due to Exit");
-            SendServerMessage(String.Format($"QUIT :{0}", Context.QuitMessage));
+            if (!Quitting)
+            {
+                Fatty.PrintToScreen("Disconnecting Due to Exit");
+                SendServerMessage(String.Format($"QUIT :{Context.QuitMessage}"));
+            }
         }
 
         public bool IsConnectedToServer()
@@ -314,12 +319,12 @@ namespace Fatty
 
         private void JoinChannel(string channelName)
         {
-            SendServerMessage("JOIN {0}", channelName);
+            SendServerMessage($"JOIN {channelName}");
         }
 
         private void PartChannel(string channelName)
         {
-            SendServerMessage("PART {0} :{1}", channelName, Context.QuitMessage);
+            SendServerMessage($"PART {channelName} :{Context.QuitMessage}");
         }
 
         public class ServerMessage
@@ -412,6 +417,9 @@ namespace Fatty
                     break;
                 case "ROOMSTATE":
                     HandleUserState(responseMessage, UserStateType.Room);
+                    break;
+                case "USERNOTICE":
+                    HandleUserNotice(responseMessage);
                     break;
                 //// RPL_NAMREPLY
                 //case "353":
@@ -666,10 +674,19 @@ namespace Fatty
                 if (!IsConnectedToServer())
                 {
                     ConnectToServer();
-                    Thread.Sleep((int)TimeSpan.FromSeconds(30).Milliseconds);
+                    Thread.Sleep((int)TimeSpan.FromSeconds(60).Milliseconds);
                 }
             }
         }
+
+        private void HandleUserNotice(ServerMessage responseMessage)
+        {
+            int separatorIndex = responseMessage.Params.IndexOf(" ");
+            string channel = responseMessage.Params.Substring(0, separatorIndex);
+            string message = responseMessage.Params.Substring(separatorIndex + 1);
+            Context.HandleUserNotice(responseMessage.Tags, channel, message);
+        }
+
     }
 }
 

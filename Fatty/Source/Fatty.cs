@@ -29,7 +29,9 @@ namespace Fatty
 
         public void Launch()
         {
-            AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
+            Console.CancelKeyPress += OnProcessExit;
+            AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
+
             ModuleTypes = FattyHelpers.GetAllDerivedClasses<FattyModule>(); 
 
             List<ServerContext> ServerContexts = LoadServerConfigs();
