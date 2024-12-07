@@ -690,8 +690,18 @@ namespace Fatty
         private void HandleUserNotice(ServerMessage responseMessage)
         {
             int separatorIndex = responseMessage.Params.IndexOf(" ");
-            string channel = responseMessage.Params.Substring(0, separatorIndex);
-            string message = responseMessage.Params.Substring(separatorIndex + 1);
+            string channel;
+            string message = "";
+            if (separatorIndex < 0)
+            {
+                channel = responseMessage.Params;
+            }
+            else
+            {
+                channel = responseMessage.Params.Substring(0, separatorIndex);
+                message = responseMessage.Params.Substring(separatorIndex + 1);
+            }
+
             Context.HandleUserNotice(responseMessage.Tags, channel, message);
         }
 

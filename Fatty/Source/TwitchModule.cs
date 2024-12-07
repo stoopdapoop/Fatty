@@ -66,6 +66,9 @@ namespace Fatty
 
             [DataMember(IsRequired = false)]
             public string IRCMirrorChannelName;
+
+            [DataMember(IsRequired = false)]
+            public bool ShouldWelcomeRaiders;
         }
 
         [DataContract]
@@ -597,13 +600,48 @@ namespace Fatty
         {
             if (tags != null)
             {
+                bool isRaidNotice = false;
+                string messageID;
+                if (tags.TryGetValue("msg-id", out messageID))
+                {
+                    if(messageID.Equals("raid", StringComparison.OrdinalIgnoreCase)) 
+                    {
+                        isRaidNotice = true;
+                    }
+                }
+                    
+
                 string systemMessage;
-                if(tags.TryGetValue("system-msg", out systemMessage))
+                if (tags.TryGetValue("system-msg", out systemMessage))
                 {
                     systemMessage = systemMessage.Replace(@"\s", " ");
                     SendMirrorChannelMessage(systemMessage);
+
+                    if (isRaidNotice && ActiveContext.ShouldWelcomeRaiders)
+                    {
+                        // extract the number of raiders from the message. Immitate aeris if there are only one or two raiders
+                        int raiderCount = int.Parse(systemMessage.Substring(0,systemMessage.IndexOf(" ")));
+                        if (raiderCount < 3)
+                        {
+                            WelcomeRaidersLikeAeris(tags);
+                        }
+                    }
                 }
             }   
+        }
+
+        private async void WelcomeRaidersLikeAeris(Dictionary<string, string> tags)
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(5));
+                string RaidingUser = tags["login"];
+                OwningChannel.SendChannelMessage($"Thanks for bring all your friends here @{RaidingUser}!");
+            }
+            catch (Exception e) 
+            {
+                Fatty.PrintWarningToScreen(e);
+            }
         }
 
         private void OnChannelMessage(Dictionary<string, string>? tags, string ircUser, string message)
