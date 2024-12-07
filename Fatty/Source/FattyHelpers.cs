@@ -10,11 +10,30 @@ using System.Net.Http.Headers;
 using System.Reflection;
 using System.Runtime.Serialization.Json;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Web;
+using System.Xml;
 
 namespace Fatty
 {
+
+    static public class StringHelpers
+    {
+        public static string RemoveWhitespace(this string input)
+        {
+            return new string(input.ToCharArray()
+                .Where(c => !Char.IsWhiteSpace(c))
+                .ToArray());
+        }
+
+        public static string RemoveDiacritics(this string text)
+        {
+            var normalizedString = text.Normalize(NormalizationForm.FormD);
+            return new string(normalizedString.Where(c => CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark).ToArray());
+        }
+    }
+
     class FattyHelpers
     {
         public static T DeserializeFromPath<T>(string path)
@@ -100,11 +119,31 @@ namespace Fatty
             }
         }
 
-        public static bool JsonSerializeToPath<T>(T TargetObject, string Path, DataContractJsonSerializerSettings SerializerSettings = null)
+        private static string FormatJson(string json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                return string.Empty;
+
+            try
+            {
+                using var doc = JsonDocument.Parse(json);
+                return JsonSerializer.Serialize(doc.RootElement, new JsonSerializerOptions { WriteIndented = true });
+            }
+            catch
+            {
+                return "Invalid JSON";
+            }
+        }
+
+            public static bool JsonSerializeToPath<T>(T TargetObject, string Path, bool friendlyFormat = false)
         {
             try
             {
-                string content = JsonSerializeFromObject<T>(TargetObject, SerializerSettings);
+                string content = JsonSerializeFromObject<T>(TargetObject);
+                if (friendlyFormat)
+                {
+                    content = FormatJson(content);
+                }
                 File.WriteAllText(Path, content);
             }
             catch (Exception e)
@@ -140,11 +179,6 @@ namespace Fatty
             return Array.Exists(searchStrings, element => element.Equals(input, compareType));
         }
 
-        public static string RemoveDiacritics(string text)
-        {
-            var normalizedString = text.Normalize(NormalizationForm.FormD);
-            return new string(normalizedString.Where(c => CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark).ToArray());
-        }
 
         public static List<Type> GetAllDerivedClasses<TBase>()
         {

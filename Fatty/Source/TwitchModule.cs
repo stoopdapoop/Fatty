@@ -13,6 +13,8 @@ using System.Web;
 
 namespace Fatty
 {
+
+
     public class TwitchModule : FattyModule
     {
         [DataContract]
@@ -41,7 +43,17 @@ namespace Fatty
 
             [DataMember]
             public List<string> BannedPhrases;
+
+            [OnDeserialized]
+            private void DeserializationInitializer(StreamingContext ctx)
+            {
+                for (int i = 0; i < BannedPhrases.Count; ++i)
+                {
+                    BannedPhrases[i] = BannedPhrases[i].RemoveWhitespace();
+                }
+            }
         }
+
 
         [DataContract]
         public class TwitchContext
@@ -307,6 +319,8 @@ namespace Fatty
                     Tokens.TokenResponses[tokenIndex] = newResponse;
                     FattyHelpers.JsonSerializeToPath(Tokens, TokenPath);
                     DateTime Expiration = DateTime.Now + TimeSpan.FromSeconds(Tokens.TokenResponses[tokenIndex].AccessExpiresInSeconds);
+
+                    //OwningChannel.SetServerPassword($"oauth:{newResponse.AccessToken}");
                     if (triggeredManually)
                     {
                         OwningChannel.SendChannelMessage($"Sucessfully refreshed auth token. It will expire at {Expiration.ToString()}. {(newAccessToken != null && newResponse.IRCUsername == null ? "Don't forget to update twitch config." : "")}");
@@ -444,6 +458,25 @@ namespace Fatty
             OwningChannel.SendChannelMessage("I don't get it");
         }
 
+        static public string GetTwitchServerPassword()
+        {
+            TwitchTokenResponse[] responses = ReadLastAuthTokenResponse().TokenResponses;
+
+            for(int i = 0; i < responses.Length; ++i)
+            {
+                if (responses[i].TwitchUsername == null)
+                {
+                    return $"oauth:{responses[i].AccessToken}";
+                }
+            }
+            return "";
+        }
+
+        static public TwitchTokenResponseStore ReadLastAuthTokenResponse()
+        {
+            return FattyHelpers.DeserializeFromPath<TwitchTokenResponseStore>(TokenPath);
+        }
+
         public override void ChannelInit(ChannelContext channel)
         {
             base.ChannelInit(channel);
@@ -459,7 +492,7 @@ namespace Fatty
 
                 GlobalData = FattyHelpers.DeserializeFromPath<TwitchContextListing>("Twitch.cfg");
 
-                Tokens = FattyHelpers.DeserializeFromPath<TwitchTokenResponseStore>(TokenPath);
+                Tokens = ReadLastAuthTokenResponse();
 
                 StartValidateOAuthTokenThread();
 
@@ -644,7 +677,7 @@ namespace Fatty
 
         private void FilterNewChatterMessages(Dictionary<string, string>? tags, string ircUser, string message)
         {
-            string strippedMessage = FattyHelpers.RemoveDiacritics(message);
+            string strippedMessage = message.RemoveDiacritics().RemoveWhitespace();
             
             string matchedString = GlobalData.BannedPhrases.FirstOrDefault(s => strippedMessage.Contains(s, StringComparison.OrdinalIgnoreCase));
             if (matchedString != null)

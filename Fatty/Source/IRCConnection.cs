@@ -56,7 +56,15 @@ namespace Fatty
             // order defined by rfc
             if (pass != null)
             {
-                SendServerMessage($"PASS {pass}");
+                // this is kind of silly, but the server password twitch is derived from the auth token, and the auth token changes frequently.
+                if (pass.Equals("TwitchMagicString"))
+                {
+                    SendServerMessage($"PASS {TwitchModule.GetTwitchServerPassword()}");
+                }
+                else
+                {
+                    SendServerMessage($"PASS {pass}");
+                }
             }
 #nullable disable
             if (Context.ServerCaps != null)
