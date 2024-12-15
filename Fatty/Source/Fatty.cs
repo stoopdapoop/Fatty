@@ -108,11 +108,8 @@ namespace Fatty
 
         public static void PrintToScreen(string message)
         {
-            string output = $"[{DateTime.Now}] {new string(message.Where(c => !char.IsControl(c)).ToArray())}";
-            lock (PrintLock)
-            {      
-                Console.WriteLine(output.TrimEnd());
-            }
+            // data race on foreground color, o well
+            PrintToScreen(message, Console.ForegroundColor);
         }
 
         public static void PrintToScreen(string message, ConsoleColor color)
@@ -123,6 +120,26 @@ namespace Fatty
                 Console.ForegroundColor = color; 
                 Console.WriteLine(output.TrimEnd());
                 Console.ResetColor();
+            }
+            Logger.Log(message);
+        }
+    }
+
+    static class Logger
+    {
+        static private readonly string FilePath;
+        static private Object LogLock = new object();
+
+        static Logger()
+        {
+            FilePath = $"logs/log_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
+        }
+
+        static public void Log(string message)
+        {
+            lock (LogLock)
+            {
+                File.AppendAllText(FilePath, $"{message}{Environment.NewLine}");
             }
         }
     }

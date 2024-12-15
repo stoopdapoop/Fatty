@@ -636,7 +636,7 @@ namespace Fatty
             {
                 await Task.Delay(TimeSpan.FromSeconds(5));
                 string RaidingUser = tags["login"];
-                OwningChannel.SendChannelMessage($"Thanks for bring all your friends here @{RaidingUser}!");
+                OwningChannel.SendChannelMessage($"Thanks for bringing all of your friends, @{RaidingUser}!");
             }
             catch (Exception e) 
             {
