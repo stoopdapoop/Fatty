@@ -229,12 +229,12 @@ namespace Fatty
 
         public void HandleUserstate(UserStateType type, Dictionary<string, string>? tags, string channel, string userName)
         {
-            if(UserstateEvent != null)
+            if (UserstateEvent != null)
             {
                 foreach (UserstateDelegate userstateDelegate in UserstateEvent.GetInvocationList())
                 {
                     ChannelContext delegateContext = (ChannelContext)userstateDelegate.Target;
-                    if(delegateContext.ChannelName == channel)
+                    if (delegateContext.ChannelName == channel)
                     {
                         userstateDelegate(type, tags, channel, userName);
                     }

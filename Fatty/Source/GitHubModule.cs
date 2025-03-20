@@ -85,7 +85,7 @@ namespace Fatty
             GitHubHttpListener.Init(this);
         }
 
-        ~GitHubModule() 
+        ~GitHubModule()
         {
             GitHubHttpListener.RemoveListener(this);
         }
@@ -453,7 +453,7 @@ namespace Fatty
 
                                 // truncate to fit into message
                                 const int LengthTarget = 480;
-                                if(messageAccumulator.Length > LengthTarget)
+                                if (messageAccumulator.Length > LengthTarget)
                                 {
                                     messageAccumulator.Remove(LengthTarget - 1, messageAccumulator.Length - LengthTarget);
                                     messageAccumulator.Append("...");
@@ -506,7 +506,7 @@ namespace Fatty
 
             return formattedMessage;
         }
-        
+
         public void GitHubLimitCommand(string ircUser, string ircChannel, string message)
         {
             GitHubContext firstContext = ActiveChannelContexts[0];
@@ -516,7 +516,7 @@ namespace Fatty
                 headers.Authorization = new AuthenticationHeaderValue("Bearer", firstContext.AccessToken);
                 headers.UserAgent.Add(new ProductInfoHeaderValue("FattyBot", "0.3"));
 
-                HttpResponseMessage response = FattyHelpers.HttpRequest("https://api.github.com", "rate_limit", HttpMethod.Get, null, headers).Result;        
+                HttpResponseMessage response = FattyHelpers.HttpRequest("https://api.github.com", "rate_limit", HttpMethod.Get, null, headers).Result;
                 if (response.IsSuccessStatusCode)
                 {
                     List<string> LimitStrings = new List<string>();
@@ -568,7 +568,7 @@ namespace Fatty
             private static Mutex initializerMutex = new Mutex();
             private static Mutex RegistrationMutex = new Mutex();
             private static Thread GithubListenerThread;
-            private static List<GitHubModule> ListenerModules = new List<GitHubModule>(); 
+            private static List<GitHubModule> ListenerModules = new List<GitHubModule>();
 
             public static void Init(GitHubModule ListenerModule)
             {
@@ -581,7 +581,7 @@ namespace Fatty
                         GithubListenerThread.Start();
                     }
                 }
-                lock(RegistrationMutex)
+                lock (RegistrationMutex)
                 {
                     ListenerModules.Add(ListenerModule);
                 }

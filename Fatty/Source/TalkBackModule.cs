@@ -40,7 +40,7 @@ namespace Fatty
             OwningChannel.ChannelMessageEvent += OnChannelMessage;
         }
 
-        void OnChannelMessage(Dictionary<string,string>? tags, string ircUser, string message)
+        void OnChannelMessage(Dictionary<string, string>? tags, string ircUser, string message)
         {
             bool bHasTags = tags != null;
 
@@ -83,7 +83,7 @@ namespace Fatty
             bool everSeen = false;
 
             string[] chunks = message.Split(" ");
-            if(chunks.Length < 2) 
+            if (chunks.Length < 2)
             {
                 OwningChannel.SendMessage("I need a name", ircUser);
                 return;
@@ -107,8 +107,8 @@ namespace Fatty
             {
                 OwningChannel.SendMessage($"Last seen {findName} in {ircChannel} on {lastSeen}, though they might be here now...", ircUser);
             }
-            
+
         }
-        
+
     }
 }

@@ -73,7 +73,7 @@ namespace Fatty
 
         public void Initialize(ServerContext server)
         {
-            if(CommandPrefix == null)
+            if (CommandPrefix == null)
                 CommandPrefix = server.CommandPrefix;
 
             DefaultInitializePermissionLists();
@@ -94,12 +94,12 @@ namespace Fatty
             {
                 bool shouldInstantiate = false;
                 string moduleName = moduleType.Name;
-                if(FeatureWhitelist.Contains(moduleName))
+                if (FeatureWhitelist.Contains(moduleName))
                 {
                     shouldInstantiate = true;
                 }
 
-                if(shouldInstantiate)
+                if (shouldInstantiate)
                 {
                     FattyModule module = (FattyModule)Activator.CreateInstance(moduleType);
                     Fatty.PrintToScreen("Initializing {0} in {1}", module.ToString(), ChannelName);
@@ -110,10 +110,10 @@ namespace Fatty
                     List<UserCommand> ModuleCommands = new List<UserCommand>();
                     module.RegisterAvailableCommands(ref ModuleCommands);
 
-                    foreach(UserCommand command in ModuleCommands)
+                    foreach (UserCommand command in ModuleCommands)
                     {
                         string commandName = command.CommandName.ToLower();
-                        if(!CommandBlacklist.Contains(commandName))
+                        if (!CommandBlacklist.Contains(commandName))
                         {
                             AvailableCommands.Add(commandName, command);
                         }
@@ -170,11 +170,11 @@ namespace Fatty
             //}
 
             IrcLogUser? foundUser = Server.GetLoggedUserInfo(user);
-            if (foundUser != null) 
+            if (foundUser != null)
             {
                 everSeen = true;
                 // this value was added after table creation and I didn't fix up old values
-                if(foundUser.LastSeen != null)
+                if (foundUser.LastSeen != null)
                 {
                     return foundUser.LastSeen;
                 }
@@ -198,7 +198,7 @@ namespace Fatty
 
                 UserCommand FoundCommand;
                 AvailableCommands.TryGetValue(CommandName, out FoundCommand);
-                if(FoundCommand != null)
+                if (FoundCommand != null)
                 {
                     FoundCommand.CommandCallback(ircUser, ircChannel, message);
                 }
@@ -237,9 +237,9 @@ namespace Fatty
 
         private void HandleUserstate(UserStateType type, Dictionary<string, string>? tags, string channel, string username)
         {
-            if(UserstateEvent != null)
+            if (UserstateEvent != null)
             {
-                foreach(UserstateDelegate usDel  in UserstateEvent.GetInvocationList())
+                foreach (UserstateDelegate usDel in UserstateEvent.GetInvocationList())
                 {
                     usDel(type, tags, channel, username);
                 }
@@ -248,9 +248,9 @@ namespace Fatty
 
         private void HandleUserNotice(Dictionary<string, string>? tags, string channel, string username)
         {
-            if(UserNoticeEvent != null)
+            if (UserNoticeEvent != null)
             {
-                foreach(UserNoticeDelegate unDel in UserNoticeEvent.GetInvocationList())
+                foreach (UserNoticeDelegate unDel in UserNoticeEvent.GetInvocationList())
                 {
                     unDel(tags, channel, username);
                 }
@@ -268,11 +268,11 @@ namespace Fatty
         {
             message = message.TrimEnd();
             string[] segments = message.Split(" ");
-            if(segments.Length > 1)
+            if (segments.Length > 1)
             {
                 UserCommand FoundCommand;
                 AvailableCommands.TryGetValue(segments[1], out FoundCommand);
-                if( FoundCommand != null)
+                if (FoundCommand != null)
                 {
                     Server.SendMessage(ircChannel, FoundCommand.CommandHelp);
                 }
@@ -291,7 +291,7 @@ namespace Fatty
         {
             StringBuilder sb = new StringBuilder();
 
-            foreach(var command in AvailableCommands)
+            foreach (var command in AvailableCommands)
             {
                 sb.Append($"{command.Value.CommandName} ");
             }
@@ -313,7 +313,7 @@ namespace Fatty
 
         public void PostConnectionInitModules()
         {
-            foreach(FattyModule module in ActiveModules)
+            foreach (FattyModule module in ActiveModules)
             {
                 module.PostConnectionModuleInit();
             }

@@ -60,7 +60,7 @@ namespace Fatty
             {
                 Fatty.PrintWarningToScreen($"Failed to deserialize \"{typeof(T).FullName}\" from path: {path} - {e.Message}", e.StackTrace);
                 return default(T);
-            }    
+            }
         }
 
         // pass null to get default serializer
@@ -70,13 +70,13 @@ namespace Fatty
             {
                 MemoryStream ms = new MemoryStream(Encoding.Unicode.GetBytes(json));
 
-                if(SerializerSettings == null)
+                if (SerializerSettings == null)
                 {
                     SerializerSettings = new DataContractJsonSerializerSettings();
                 }
 
                 var serializer = new DataContractJsonSerializer(typeof(T), SerializerSettings);
-                
+
                 T returnVal;
                 returnVal = (T)serializer.ReadObject(ms);
 
@@ -135,7 +135,7 @@ namespace Fatty
             }
         }
 
-            public static bool JsonSerializeToPath<T>(T TargetObject, string Path, bool friendlyFormat = false)
+        public static bool JsonSerializeToPath<T>(T TargetObject, string Path, bool friendlyFormat = false)
         {
             try
             {

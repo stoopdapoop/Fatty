@@ -98,10 +98,10 @@ namespace Fatty
         {
             [DataMember(IsRequired = false, Name = "Tokens")]
             public TwitchTokenResponse[] TokenResponses;
-            
+
             public int GetIndexByTwitchUser(string username)
             {
-                for(int i = 0; i < TokenResponses.Length; ++i)
+                for (int i = 0; i < TokenResponses.Length; ++i)
                 {
                     if (TokenResponses[i].TwitchUsername != null && TokenResponses[i].TwitchUsername.Equals(username, StringComparison.OrdinalIgnoreCase))
                     {
@@ -187,7 +187,7 @@ namespace Fatty
             public string UserId { get; set; }
 
             [JsonPropertyName("duration")]
-            public int? Duration { get; set; }  
+            public int? Duration { get; set; }
 
             [JsonPropertyName("reason")]
             public string Reason { get; set; }
@@ -263,14 +263,14 @@ namespace Fatty
         public override void ListCommands(ref List<string> CommandNames)
         {
             CommandNames.Add("TwitchFattyAuthURL");
-            CommandNames.Add("TwitchUserAuthURL"); 
+            CommandNames.Add("TwitchUserAuthURL");
             CommandNames.Add("TwitchRefreshToken");
             CommandNames.Add("TwitchMirror");
         }
 
         public static string GetAuthScopesString()
         {
-            return string.Join(" " ,GlobalData.BotScopes);
+            return string.Join(" ", GlobalData.BotScopes);
         }
 
         public static string GetUserAuthScopesString()
@@ -288,7 +288,7 @@ namespace Fatty
             return GetMirrorKey(ActiveContext.IRCMirrorServerName, ActiveContext.IRCMirrorChannelName);
         }
 
-        private void RefreshOAuthToken(TwitchContextListing globals, int tokenIndex, bool triggeredManually, string? newAccessToken  = null)
+        private void RefreshOAuthToken(TwitchContextListing globals, int tokenIndex, bool triggeredManually, string? newAccessToken = null)
         {
             var formData = new Dictionary<string, string>();
 
@@ -422,10 +422,10 @@ namespace Fatty
                 }
 
                 int partLen = parts.Length;
-                string[] enableStrings = { "on", "enable", "1"};
+                string[] enableStrings = { "on", "enable", "1" };
                 string[] disableStrings = { "off", "disable", "0" };
-                bool enabled = enableStrings.Contains(parts[partLen-1], StringComparer.OrdinalIgnoreCase);
-                bool disabled = disableStrings.Contains(parts[partLen-1], StringComparer.OrdinalIgnoreCase);
+                bool enabled = enableStrings.Contains(parts[partLen - 1], StringComparer.OrdinalIgnoreCase);
+                bool disabled = disableStrings.Contains(parts[partLen - 1], StringComparer.OrdinalIgnoreCase);
 
                 if (!(enabled || disabled))
                 {
@@ -465,7 +465,7 @@ namespace Fatty
         {
             TwitchTokenResponse[] responses = ReadLastAuthTokenResponse().TokenResponses;
 
-            for(int i = 0; i < responses.Length; ++i)
+            for (int i = 0; i < responses.Length; ++i)
             {
                 if (responses[i].TwitchUsername == null)
                 {
@@ -528,9 +528,9 @@ namespace Fatty
             }
             else
             {
-                if(ActiveContext.IRCMirrorChannelName == channel.ChannelName && ActiveContext.IRCMirrorServerName == OwningChannel.ServerName)
+                if (ActiveContext.IRCMirrorChannelName == channel.ChannelName && ActiveContext.IRCMirrorServerName == OwningChannel.ServerName)
                 {
-                    if(!OwningChannel.LoggingDisabled)
+                    if (!OwningChannel.LoggingDisabled)
                     {
                         Fatty.PrintWarningToScreen($"!!!!!!!!!!!Logging is enabled in twitch mirror channel : {channel.ServerName}/{channel.ChannelName}");
                     }
@@ -563,7 +563,7 @@ namespace Fatty
             }
         }
 
-        
+
 
         public override void PostConnectionModuleInit()
         {
@@ -604,12 +604,12 @@ namespace Fatty
                 string messageID;
                 if (tags.TryGetValue("msg-id", out messageID))
                 {
-                    if(messageID.Equals("raid", StringComparison.OrdinalIgnoreCase)) 
+                    if (messageID.Equals("raid", StringComparison.OrdinalIgnoreCase))
                     {
                         isRaidNotice = true;
                     }
                 }
-                    
+
 
                 string systemMessage;
                 if (tags.TryGetValue("system-msg", out systemMessage))
@@ -620,14 +620,14 @@ namespace Fatty
                     if (isRaidNotice && ActiveContext.ShouldWelcomeRaiders)
                     {
                         // extract the number of raiders from the message. Immitate aeris if there are only one or two raiders
-                        int raiderCount = int.Parse(systemMessage.Substring(0,systemMessage.IndexOf(" ")));
+                        int raiderCount = int.Parse(systemMessage.Substring(0, systemMessage.IndexOf(" ")));
                         if (raiderCount < 3)
                         {
                             WelcomeRaidersLikeAeris(tags);
                         }
                     }
                 }
-            }   
+            }
         }
 
         private async void WelcomeRaidersLikeAeris(Dictionary<string, string> tags)
@@ -638,7 +638,7 @@ namespace Fatty
                 string RaidingUser = tags["login"];
                 OwningChannel.SendChannelMessage($"Thanks for bringing all of your friends, @{RaidingUser}!");
             }
-            catch (Exception e) 
+            catch (Exception e)
             {
                 Fatty.PrintWarningToScreen(e);
             }
@@ -676,7 +676,7 @@ namespace Fatty
         {
             if (IsTwitchChannel)
             {
-                if(IsMirrorConfigured())
+                if (IsMirrorConfigured())
                 {
                     IRCMirrorChannelTable[GetMirrorKey()](message);
                 }
@@ -689,11 +689,11 @@ namespace Fatty
 
         private bool IsTwitchBigwigType(Dictionary<string, string>? tags, out string userType)
         {
-            if(tags.TryGetValue("user-type", out userType))
+            if (tags.TryGetValue("user-type", out userType))
             {
                 return userType != "mod" && userType != "";
             }
-            
+
             return false;
         }
 
@@ -716,7 +716,7 @@ namespace Fatty
         private void FilterNewChatterMessages(Dictionary<string, string>? tags, string ircUser, string message)
         {
             string strippedMessage = message.RemoveDiacritics().RemoveWhitespace();
-            
+
             string matchedString = GlobalData.BannedPhrases.FirstOrDefault(s => strippedMessage.Contains(s, StringComparison.OrdinalIgnoreCase));
             if (matchedString != null)
             {
@@ -757,10 +757,10 @@ namespace Fatty
                     TwitchChatSendMessageAsUser(twitchUserID, userAccessToken, message);
                 }
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
                 Fatty.PrintWarningToScreen(ex);
-            } 
+            }
         }
 
         // used to mirror twitch messages onto irc
@@ -889,7 +889,7 @@ namespace Fatty
                 string other = result.Content.ReadAsStringAsync().Result;
                 Fatty.PrintWarningToScreen($"{phrase} - {other}");
                 success = false;
-            }    
+            }
 
             return success;
         }
@@ -950,7 +950,7 @@ namespace Fatty
 
             var result = await FattyHelpers.HttpRequest(TwitchEndpoints.BaseAPI, "helix/chat/messages", HttpMethod.Post, null, headers, content);
 
-            if(!result.IsSuccessStatusCode)
+            if (!result.IsSuccessStatusCode)
             {
                 //SendMirrorChannelMessage("Failed to send message");
                 string phrase = result.ReasonPhrase;

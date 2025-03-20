@@ -12,7 +12,7 @@ namespace Fatty
 {
     class CraigslistModule : FattyModule
     {
-        
+
         // fields populated by data contract.
 #pragma warning disable 0649
         [DataContract]
@@ -81,7 +81,7 @@ namespace Fatty
             public List<SearchForSaleRequest.MotorcycleType>? MotorcycleTypes;
 
             [DataMember]
-           public List<string>? ExcludedTerms;
+            public List<string>? ExcludedTerms;
 #nullable disable
         }
 #pragma warning restore 0649
@@ -111,7 +111,7 @@ namespace Fatty
 
             // lazy init configuration file
             CraigslistContextList Contexts = FattyHelpers.DeserializeFromPath<CraigslistContextList>("Craigslist.cfg");
-            if(Contexts != null)
+            if (Contexts != null)
             {
                 ActiveContexts = new List<CraigslistContext>();
                 foreach (var context in Contexts.AllContexts)
@@ -208,7 +208,7 @@ namespace Fatty
                     }
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
             }

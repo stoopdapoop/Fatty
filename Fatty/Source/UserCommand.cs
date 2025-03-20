@@ -6,7 +6,7 @@ namespace Fatty
 {
     public class UserCommand
     {
-     
+
         public string CommandName;
 
         public CommandDelegate CommandCallback;

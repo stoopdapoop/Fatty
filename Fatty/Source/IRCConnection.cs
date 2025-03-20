@@ -88,7 +88,7 @@ namespace Fatty
         {
             Fatty.PrintToScreen("Attempting to connect to: {0}:{1}", Context.ServerURL, Context.ServerPort);
 
-            if(HealthThread == null)
+            if (HealthThread == null)
             {
                 HealthThread = new Thread(new ThreadStart(ListenForDisconnect));
                 HealthThread.Name = "HealthThread";
@@ -132,7 +132,7 @@ namespace Fatty
                 Fatty.PrintToScreen("Sending user info...");
                 SendUserInfo(Context.Nick, Context.RealName, Context.ServerAuthPassword);
 
-                foreach( ChannelContext chanContext in Context.Channels)
+                foreach (ChannelContext chanContext in Context.Channels)
                 {
                     chanContext.PostConnectionInitModules();
                 }
@@ -141,7 +141,7 @@ namespace Fatty
             catch (Exception e)
             {
                 Fatty.PrintWarningToScreen($"Connection Failed: {e.Message}", e.StackTrace);
-                if(ListenerThread != null && ListenerThread.IsAlive)
+                if (ListenerThread != null && ListenerThread.IsAlive)
                 {
                     Fatty.PrintWarningToScreen("Listener thread still running after connection failure!!!!");
                 }
@@ -180,7 +180,7 @@ namespace Fatty
                 SendServerMessage($"NAMES {ircChannel.ChannelName}");
             }
 
-            if(NamesWaitHandle.WaitOne(1000))
+            if (NamesWaitHandle.WaitOne(1000))
             {
 
             }
@@ -243,15 +243,15 @@ namespace Fatty
             {
                 while ((ircResponse = reader.ReadLine()) != null)
                 {
-                        PrintServerMessage(ircResponse);
-                        ThreadPool.QueueUserWorkItem(ThreadProc, ircResponse);
+                    PrintServerMessage(ircResponse);
+                    ThreadPool.QueueUserWorkItem(ThreadProc, ircResponse);
                 }
             }
             catch (Exception e)
             {
                 Fatty.PrintWarningToScreen($"Listener Exception: {e.Message}", e.StackTrace);
             }
-            
+
             Fatty.PrintToScreen($"Listener Died ({Context.ServerName})", ConsoleColor.Yellow);
             ListenerIsListening = false;
         }
@@ -270,7 +270,7 @@ namespace Fatty
                 {
                     string talkingUser = serverMessage.Prefix.Substring(0, serverMessage.Prefix.IndexOf('!')).TrimStart(':');
                     string userMessage = serverMessage.Params.Substring(serverMessage.Params.IndexOf(":") + 1);
-                    string channelName = serverMessage.Params.Substring(0, serverMessage.Params.IndexOf(":") - 1);  
+                    string channelName = serverMessage.Params.Substring(0, serverMessage.Params.IndexOf(":") - 1);
 
                     Fatty.PrintToScreen($"{channelName}<{talkingUser}>{userMessage}", ConsoleColor.DarkCyan);
                 }
@@ -283,7 +283,7 @@ namespace Fatty
                 {
                     string noticeSender = serverMessage.Prefix;
                     int maskDelimit = serverMessage.Prefix.IndexOf('!');
-                    if (maskDelimit > -1) 
+                    if (maskDelimit > -1)
                     {
                         noticeSender = serverMessage.Prefix.Substring(0, maskDelimit);
                     }
@@ -304,8 +304,8 @@ namespace Fatty
                     Fatty.PrintToScreen(message);
                 }
             }
-            catch (Exception ex) 
-            { 
+            catch (Exception ex)
+            {
                 Fatty.PrintWarningToScreen($"{ex.Message} : While trying to display {message}", ex.StackTrace);
             }
         }
@@ -315,7 +315,7 @@ namespace Fatty
             // No state object was passed to QueueUserWorkItem, so stateInfo is null.
             DispatchMessageEvents((string)stateInfo);
         }
-        
+
         private void RuntimeJoinChannel(string channelName)
         {
             ChannelContext newContext = new ChannelContext();
@@ -367,7 +367,7 @@ namespace Fatty
                         nextStart = tagEnd + 1;
                     }
 
-                    
+
                     string nextSection = rawMessage.Substring(nextStart);
                     if (nextSection[0] == ':')
                     {
@@ -449,7 +449,7 @@ namespace Fatty
 
         private void HandleWelcomeMessage(ServerMessage message)
         {
-            int welcomeID =  int.Parse(message.Command);
+            int welcomeID = int.Parse(message.Command);
             IRCWelcomeProgress.NotifyOfMessage(welcomeID);
         }
 
@@ -459,7 +459,7 @@ namespace Fatty
             int DelimPos = message.Params.IndexOf(':');
             string messageTo = message.Params.Substring(0, DelimPos - 1);
             string chatMessage = message.Params.Substring(DelimPos + 1);
-            
+
             if (messageTo[0] == '#' || messageTo[0] == '&')
             {
                 Context.HandleServerMessage(message.Tags, userSender, messageTo, chatMessage);
@@ -533,7 +533,7 @@ namespace Fatty
                                 int argDelim = args.IndexOf(' ');
                                 string sendTo = args.Substring(0, argDelim);
                                 string messageToSend = args.Substring(argDelim + 1);
-                                SendMessage(sendTo, messageToSend); 
+                                SendMessage(sendTo, messageToSend);
                                 bAdminCommand = true;
                                 break;
                             case "quit":
@@ -585,8 +585,8 @@ namespace Fatty
             string joiningUser = serverMessage.Prefix.Substring(startIndex, endIndex - startIndex);
 
             JoinType type = JoinType.Invalid;
-            
-            switch(serverMessage.Command)
+
+            switch (serverMessage.Command)
             {
                 case "JOIN":
                     type = JoinType.Join;
@@ -623,7 +623,7 @@ namespace Fatty
 
         private void HandleNameList(string[] commandTokens)
         {
-            lock(NamesLock)
+            lock (NamesLock)
             {
                 if (WaitingOnNames)
                 {
@@ -650,7 +650,7 @@ namespace Fatty
                 {
                     displayName = responseMessage.Params;
                 }
-            
+
                 Context.HandleUserstate(type, responseMessage.Tags, channelName, displayName);
             }
             catch (Exception e)
@@ -675,7 +675,7 @@ namespace Fatty
         private void ListenForDisconnect()
         {
             Thread.Sleep((int)TimeSpan.FromSeconds(30).TotalMilliseconds);
-            while(true)
+            while (true)
             {
                 Thread.Sleep((int)TimeSpan.FromSeconds(30).TotalMilliseconds);
 

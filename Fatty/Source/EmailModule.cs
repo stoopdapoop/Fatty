@@ -50,7 +50,7 @@ namespace Fatty
         void SendEmail(string to, string from, string message)
         {
             bool success = SendEmailToClient(to, String.Format("A message from {0} in {1}", from, OwningChannel.ChannelName), message);
-            if(success)
+            if (success)
             {
                 OwningChannel.SendMessage(String.Format("sent \"{0}\" to {1}", message, to), from);
             }

@@ -32,7 +32,7 @@ namespace Fatty
             Console.CancelKeyPress += OnProcessExit;
             AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
 
-            ModuleTypes = FattyHelpers.GetAllDerivedClasses<FattyModule>(); 
+            ModuleTypes = FattyHelpers.GetAllDerivedClasses<FattyModule>();
 
             List<ServerContext> ServerContexts = LoadServerConfigs();
 
@@ -96,13 +96,13 @@ namespace Fatty
         {
             lock (PrintLock)
             {
-                Fatty.PrintToScreen("-----------------------------------------------------------------------------\r\n");
+                PrintToScreen("-----------------------------------------------------------------------------\r\n");
                 PrintToScreen(message, ConsoleColor.Yellow);
                 if (optionalStack.Length > 0)
                 {
                     PrintToScreen(optionalStack, ConsoleColor.Yellow);
                 }
-                Fatty.PrintToScreen("-----------------------------------------------------------------------------\r\n");
+                PrintToScreen("-----------------------------------------------------------------------------\r\n");
             }
         }
 
@@ -117,11 +117,11 @@ namespace Fatty
             string output = $"[{DateTime.Now}] {new string(message.Where(c => !char.IsControl(c)).ToArray())}";
             lock (PrintLock)
             {
-                Console.ForegroundColor = color; 
+                Console.ForegroundColor = color;
                 Console.WriteLine(output.TrimEnd());
                 Console.ResetColor();
             }
-            Logger.Log(message);
+            Logger.Log(output);
         }
     }
 

@@ -13,7 +13,7 @@ namespace Fatty
         // fields populated by data contract.
 #pragma warning disable 0649
         [DataContract]
-        public class SteamConfig 
+        public class SteamConfig
         {
             [DataMember(IsRequired = true)]
             public string APIKey;
@@ -78,7 +78,7 @@ namespace Fatty
 
             [DataMember(Name = "players")]
             public int PlayerCount;
-            
+
         }
 
 #pragma warning restore 0649
@@ -105,7 +105,7 @@ namespace Fatty
                 Config = FattyHelpers.DeserializeFromPath<SteamConfig>("Steam.cfg");
             }
 
-            foreach(var context in Config.AllContexts)
+            foreach (var context in Config.AllContexts)
             {
                 if (context.ServerName.Equals(OwningChannel.ServerName, StringComparison.OrdinalIgnoreCase))
                 {
@@ -142,11 +142,11 @@ namespace Fatty
                 CancellationTokenSource tokenSource = new CancellationTokenSource();
                 Random rand = new Random();
 
-            
+
                 // make each instance of the module wait some amount of time so we don't get in trouble for spamming.
                 await Task.Delay(rand.Next(1000, 5000));
                 // Spawn listener Thread
-                PollingThread = new Thread( () => PollNeotokyoServers(ChannelContext, tokenSource.Token));
+                PollingThread = new Thread(() => PollNeotokyoServers(ChannelContext, tokenSource.Token));
                 PollingThread.Name = $"{OwningChannel.ServerName}:{ircChannel}SteamPollingThread";
                 PollingThread.Start();
             }
@@ -173,7 +173,7 @@ namespace Fatty
                             string MaxServerName = "";
                             foreach (var server in pollResponse.Servers)
                             {
-                                if(maxPop < server.PlayerCount)
+                                if (maxPop < server.PlayerCount)
                                 {
                                     maxPop = server.PlayerCount;
                                     MaxServerName = server.ServerName;
@@ -182,10 +182,10 @@ namespace Fatty
                             }
 
                             reported = true;
-                            OwningChannel.SendChannelMessage($"there are {pollResponse.Servers.Count} populated servers. The highest population is {maxPop} : {MaxServerName}");         
+                            OwningChannel.SendChannelMessage($"there are {pollResponse.Servers.Count} populated servers. The highest population is {maxPop} : {MaxServerName}");
                         }
                     }
-                    if(!reported)
+                    if (!reported)
                     {
                         OwningChannel.SendChannelMessage("no populated servers :[");
                     }
@@ -193,7 +193,7 @@ namespace Fatty
                 else
                 {
                     OwningChannel.SendChannelMessage("something bad happened");
-                }    
+                }
             }
 
             catch (Exception ex)
@@ -222,14 +222,14 @@ namespace Fatty
                 try
                 {
                     HttpResponseMessage result = FattyHelpers.HttpRequest(APIBaseAddress, ServerListEndpoint, HttpMethod.Get, GetNeotokyoQueryParams(), null).Result;
-                    
+
                     if (result.IsSuccessStatusCode)
                     {
                         List<SteamGameServer> PopulatedServers = new List<SteamGameServer>();
                         try
                         {
                             // todo: read content properly instead of doing this weird string transcode
-                            SteamServerResult pollResult = FattyHelpers.DeserializeFromJsonString<SteamServerResult>( result.Content.ReadAsStringAsync().Result);
+                            SteamServerResult pollResult = FattyHelpers.DeserializeFromJsonString<SteamServerResult>(result.Content.ReadAsStringAsync().Result);
                             SteamServerResponse pollResponse = pollResult.Response;
                             if (pollResponse != null)
                             {
@@ -250,12 +250,12 @@ namespace Fatty
                             Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
                         }
 
-                        if(PopulatedServers.Count > 0)
+                        if (PopulatedServers.Count > 0)
                         {
                             if (PopulatedServers.Count == 1)
                             {
-                                
-                                OwningChannel.SendChannelMessage($"[{DateTime.Now.ToShortDateString()}] Neotokyo server \"{PopulatedServers[0].ServerName}\" has { PopulatedServers[0].PlayerCount } nerds in it");
+
+                                OwningChannel.SendChannelMessage($"[{DateTime.Now.ToShortDateString()}] Neotokyo server \"{PopulatedServers[0].ServerName}\" has {PopulatedServers[0].PlayerCount} nerds in it");
                             }
                             else
                             {
@@ -270,7 +270,7 @@ namespace Fatty
                         Fatty.PrintWarningToScreen($"Unsuccessful steam polling  {result.ReasonPhrase} in {OwningChannel.ChannelName}");
                     }
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
                 }

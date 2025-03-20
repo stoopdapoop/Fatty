@@ -147,7 +147,7 @@ namespace Fatty
                 string inputInterpretation = null;
                 string inputResult = null;
 
-                if(res.Count >= 2)
+                if (res.Count >= 2)
                 {
                     inputInterpretation = res[0].InnerText;
                     inputResult = res[1].InnerText;
