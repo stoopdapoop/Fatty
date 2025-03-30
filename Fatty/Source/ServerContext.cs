@@ -188,7 +188,7 @@ namespace Fatty
                     }
                     catch (Exception ex)
                     {
-                        Fatty.PrintWarningToScreen($"Falled to issue Channel Message events for {(curContext != null ? $"{curContext.ChannelName}" : "Error")}", ex.StackTrace);
+                        Fatty.PrintWarningToScreen($"Failed to issue Channel Message events for {(curContext != null ? $"{curContext.ServerName}:{curContext.ChannelName}" : "Error")}", ex.StackTrace);
                     }
                 }
             }

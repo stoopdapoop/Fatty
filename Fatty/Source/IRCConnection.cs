@@ -101,8 +101,6 @@ namespace Fatty
             {
                 //Establish connection
                 this.IrcConnection = new TcpClient(Context.ServerURL, Context.ServerPort);
-                // wait 20 minutes for timeout
-                this.IrcConnection.ReceiveTimeout = 1000 * 60 * 20;
                 this.IrcStream = this.IrcConnection.GetStream();
                 if (Context.UseSSL)
                 {
@@ -191,12 +189,12 @@ namespace Fatty
             // this is where I left off
             return Array.Empty<string>();
         }
-        private void SendServerMessage(string format, params object[] args)
+        public void SendServerMessage(string format, params object[] args)
         {
             SendServerMessage(String.Format(format, args));
         }
 
-        private void SendServerMessage(string message)
+        public void SendServerMessage(string message)
         {
             // remove newlines and carraige return
             string outMessage = String.Format("{0}", message.Replace("\n", " ").Replace("\r", " "));
@@ -313,7 +311,15 @@ namespace Fatty
         void ThreadProc(object stateInfo)
         {
             // No state object was passed to QueueUserWorkItem, so stateInfo is null.
-            DispatchMessageEvents((string)stateInfo);
+            try
+            {
+                DispatchMessageEvents((string)stateInfo);
+            }
+            catch (Exception ex)
+            {
+                Fatty.PrintToScreen($"exception on message {(string)stateInfo}");
+                Fatty.PrintWarningToScreen(ex.Message, ex.StackTrace);
+            }
         }
 
         private void RuntimeJoinChannel(string channelName)
