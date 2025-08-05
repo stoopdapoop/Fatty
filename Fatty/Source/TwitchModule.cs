@@ -4,10 +4,12 @@ using System.Collections.Specialized;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Numerics;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 
@@ -35,6 +37,9 @@ namespace Fatty
             [DataMember(IsRequired = true)]
             public List<string> BotScopes;
 
+            [DataMember(IsRequired = false)]
+            public List<string> MinimalBotScopes;
+            
             [DataMember(IsRequired = true)]
             public List<string> UserScopes;
 
@@ -43,6 +48,15 @@ namespace Fatty
 
             [DataMember]
             public List<string> BannedPhrases;
+
+            [DataMember]
+            public HashSet<string> BaitRaces;
+
+            [DataMember]
+            public HashSet<string> BaitSubjects;
+
+            [DataMember]
+            public HashSet<string> BaitAdjectives;
 
             [OnDeserialized]
             private void DeserializationInitializer(StreamingContext ctx)
@@ -223,6 +237,8 @@ namespace Fatty
 
         private bool IsTwitchChannel;
 
+        System.Threading.Timer Timer = null;
+
         private static TwitchContextListing GlobalData;
 
         // both the twitch channel module and the mirror channel module will have the same context
@@ -258,6 +274,7 @@ namespace Fatty
             Commands.Add(new UserCommand("TwitchUserAuthURL", GenTwitchUserAuthTokenURL, "Generates a twitch Oath url a user"));
             Commands.Add(new UserCommand("TwitchRefreshToken", RefreshOAuthTokenCommand, "Refreshes OAuth Tokens. Pass in an access token as argument to validate, otherwise last refresh token is used."));
             Commands.Add(new UserCommand("TwitchMirror", MirrorCommand, MirrorCommandHelp));
+            Commands.Add(new UserCommand("TwitchTimer", StartTwitchTimer, "args: ([minutes] seconds message) or (stop)"));
         }
 
         public override void ListCommands(ref List<string> CommandNames)
@@ -266,11 +283,13 @@ namespace Fatty
             CommandNames.Add("TwitchUserAuthURL");
             CommandNames.Add("TwitchRefreshToken");
             CommandNames.Add("TwitchMirror");
+            CommandNames.Add("TwitchTimer");
         }
 
-        public static string GetAuthScopesString()
+        public static string GetAuthScopesString(bool bUseMinimalScope)
         {
-            return string.Join(" ", GlobalData.BotScopes);
+
+            return string.Join(" ", bUseMinimalScope? GlobalData.MinimalBotScopes : GlobalData.BotScopes);
         }
 
         public static string GetUserAuthScopesString()
@@ -713,19 +732,97 @@ namespace Fatty
             }
         }
 
-        private void FilterNewChatterMessages(Dictionary<string, string>? tags, string ircUser, string message)
+        private bool BestViewersDetected(string message)
         {
             string strippedMessage = message.RemoveDiacritics().RemoveWhitespace();
 
             string matchedString = GlobalData.BannedPhrases.FirstOrDefault(s => strippedMessage.Contains(s, StringComparison.OrdinalIgnoreCase));
-            if (matchedString != null)
+
+            if(matchedString != null)
             {
+                Fatty.PrintToScreen($"Detected BestViewers {matchedString}");
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool RaceBaitDetected(string message)
+        {
+            message = message.ToLower();
+            message = new string(message.Where(c => !char.IsPunctuation(c)).ToArray());
+
+            string[] tokens = message.Split(" ");
+            bool raceToken = false;
+            int raceCount = 0;
+            int subjectCount = 0;
+            string foundRaceToken = "";
+            bool adjectiveToken = false;
+            string foundAdjectiveToken = "";
+            bool subjectToken = false;
+            string foundSubjectToken = "";
+
+            foreach(string token in tokens)
+            {
+                string foundToken = "";
+                if(GlobalData.BaitRaces.TryGetValue(token, out foundToken))
+                {
+                    ++raceCount;
+                    raceToken = true;
+                    foundRaceToken = foundToken;
+                }
+                if(GlobalData.BaitAdjectives.TryGetValue(token, out foundToken))
+                {
+                    adjectiveToken = true;
+                    foundAdjectiveToken = foundToken;
+                }
+                if(GlobalData.BaitSubjects.TryGetValue(token, out foundToken))
+                {
+                    ++subjectCount;
+                    subjectToken = true;
+                    foundSubjectToken = foundToken;
+                }
+
+                if(raceCount > 1 && subjectCount > 1)
+                {
+                    Fatty.PrintToScreen($"Racial Abuse: racecount:\"{raceCount}\" subjectCount:\"{subjectCount}\"");
+                    //OwningChannel.SendChannelMessage($"Debug: RacialAbuse detected");
+                    return true;
+                }
+
+                if(raceToken && adjectiveToken && subjectToken)
+                {
+                    Fatty.PrintToScreen($"Racial Abuse: \"{foundRaceToken}\" \"{foundAdjectiveToken}\" \"{foundSubjectToken}\"");
+                    //OwningChannel.SendChannelMessage($"Debug: RacialAbuse detected");
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void FilterNewChatterMessages(Dictionary<string, string>? tags, string ircUser, string message)
+        {
+            bool BotSpamDetected = BestViewersDetected(message);
+            bool RacialAbuseDetected = RaceBaitDetected(message);
+
+            if (BotSpamDetected || RacialAbuseDetected)
+            {
+                string BanReason = "Rule Breaking";
+                if (BotSpamDetected)
+                    BanReason = "Bot Spam";
+                if (RacialAbuseDetected)
+                    BanReason = "Abuse";
                 //OwningChannel.SendChannelMessage($"STFU, {matchedString} ass bot");
                 string roomID = tags["room-id"];
                 string userID = tags["user-id"];
 
-                BanUser(roomID, userID);
+                BanUser(roomID, userID, BanReason);
             }
+//             else
+//             {
+//                 OwningChannel.SendChannelMessage($"acceptable");
+//             }
         }
 
         // used to mirror irc messages on twitch
@@ -794,6 +891,12 @@ namespace Fatty
 
         private void GenTwitchAuthTokenURL(string ircUser, string ircChannel, string message)
         {
+            bool bUseMinimal = false;
+            if (message.Split().Length > 1)
+            {
+                bUseMinimal = true;
+            }
+
             UriBuilder uriBuilder = new UriBuilder(TwitchEndpoints.BaseOAuth)
             {
                 Path = "oauth2/authorize"
@@ -803,12 +906,93 @@ namespace Fatty
             queryData["redirect_uri"] = GlobalData.RedirectURI;
             //queryData["force_verify"] = "true"; 
             queryData["response_type"] = "code";
-            queryData["scope"] = GetAuthScopesString();
+            queryData["scope"] = GetAuthScopesString(bUseMinimal);
             queryData["state"] = Guid.NewGuid().ToString("N");
             uriBuilder.Query = queryData.ToString();
 
             OwningChannel.SendChannelMessage(uriBuilder.Uri.ToString());
         }
+
+        private void StartTwitchTimer(string ircUser, string ircChannel, string message)
+        {
+            var tokens = message.Split();
+
+            if (tokens.Length < 3)
+            {
+                if (tokens.Length == 2)
+                {
+                    if (tokens[1] == "stop")
+                    {
+                        if (Timer != null)
+                        {
+                            Timer.Dispose();
+                            OwningChannel.SendChannelMessage("ok");
+                        }
+                        else
+                        {
+                            OwningChannel.SendChannelMessage("nothing to stop");
+                        }
+                    }
+                    else if (tokens[1] == "pause")
+                    {
+                        if (Timer != null)
+                        {
+                            //Timer.
+                            OwningChannel.SendChannelMessage("k");
+                        }
+                        else
+                        {
+                            OwningChannel.SendChannelMessage("nothing to pause");
+                        }
+                    }
+                }
+                else
+                {
+                    OwningChannel.SendChannelMessage("???");
+                }
+                return;
+            }
+
+            int argCount = 0;
+            int minutes = 0;
+            int seconds = 0;
+            if(int.TryParse(tokens[1], out minutes))
+            {
+                argCount++;
+            }
+            if(int.TryParse(tokens[2], out seconds))
+            {
+                argCount++;
+            }
+
+            bool ValidDuration = minutes != 0 || seconds != 0;
+            if(ValidDuration)
+            {
+                if (Timer != null)
+                {
+                    Timer.Dispose();
+                    Timer = null;
+                    OwningChannel.SendChannelMessage("Got rid of old timer");
+                }
+
+                string[] messageTokens = tokens.Skip(argCount + 1).ToArray();
+                string callbackMessage = string.Join(" ", messageTokens);
+                TimerCallback callback = state =>
+                {
+                    OwningChannel.SendChannelMessage(callbackMessage);
+                    Timer.Dispose();
+                    Timer = null;
+                };
+
+                Timer = new System.Threading.Timer(callback, null, TimeSpan.FromMinutes(minutes) + TimeSpan.FromSeconds(seconds), Timeout.InfiniteTimeSpan);
+                OwningChannel.SendChannelMessage($"Set timer for {minutes} minutes and {seconds} seconds");
+            }
+            else
+            {
+                OwningChannel.SendChannelMessage("Invalid Duration");
+            }
+        }
+        
 
         private void GenTwitchUserAuthTokenURL(string ircUser, string ircChannel, string message)
         {
@@ -860,7 +1044,7 @@ namespace Fatty
             }
         }
 
-        private bool BanUser(string roomID, string userID)
+        private bool BanUser(string roomID, string userID, string reason)
         {
             var headers = GetCommonTwitchRequestHeaders();
 
@@ -870,7 +1054,7 @@ namespace Fatty
                 {"moderator_id", ModID }
             };
 
-            string BanReqestBody = CreateBanRequestJson(userID, null, "Bot Spam");
+            string BanReqestBody = CreateBanRequestJson(userID, null, reason);
 
             StringContent content = new StringContent(BanReqestBody, Encoding.UTF8, "application/json");
 
