@@ -8,10 +8,8 @@ using System.Threading.Tasks;
 
 namespace Fatty
 {
-    class SteamModule : FattyModule
+    public class SteamModule : FattyModule
     {
-        // fields populated by data contract.
-#pragma warning disable 0649
         [DataContract]
         public class SteamConfig
         {
